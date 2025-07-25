@@ -20,13 +20,13 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [apiResponses, setApiResponses] = useState({ portfolio: {}, tokens: {} });
 
-  const isApiConfigured = process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
+  const is1inchApiConfigured = process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
   const isMoralisApiConfigured = !!process.env.MORALIS_API_KEY && process.env.MORALIS_API_KEY !== 'YOUR_MORALIS_API_KEY_HERE';
 
 
   useEffect(() => {
     async function fetchData() {
-      if (isConnected && address && isApiConfigured && isMoralisApiConfigured) {
+      if (isConnected && address && is1inchApiConfigured && isMoralisApiConfigured) {
         setLoading(true);
         const [portfolioResult, tokensResult] = await Promise.all([
           getPortfolioAction(address),
@@ -50,7 +50,7 @@ export default function Home() {
       }
     }
     fetchData();
-  }, [isConnected, address, isApiConfigured, isMoralisApiConfigured]);
+  }, [isConnected, address, is1inchApiConfigured, isMoralisApiConfigured]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -73,23 +73,23 @@ export default function Home() {
         )}
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 flex flex-col gap-6">
-            {!isApiConfigured && isConnected && (
+            {!isMoralisApiConfigured && isConnected && (
               <Alert>
                 <Terminal className="h-4 w-4" />
-                <AlertTitle>API Key Not Configured</AlertTitle>
+                <AlertTitle>Moralis API Key Not Configured</AlertTitle>
                 <AlertDescription>
-                  Please add your 1inch API key to the <code>.env</code> file to see live portfolio data. Displaying empty data.
+                  Please add your Moralis API key to the <code>.env</code> file to see live portfolio data. Displaying empty data.
                 </AlertDescription>
               </Alert>
             )}
-            <PortfolioOverview assets={portfolioAssets} loading={loading} isApiConfigured={isApiConfigured && isMoralisApiConfigured} />
-            <RiskAssessment portfolio={portfolioAssets} disabled={!isConnected || loading || !isApiConfigured || !isMoralisApiConfigured} />
+            <PortfolioOverview assets={portfolioAssets} loading={loading} isApiConfigured={isMoralisApiConfigured} />
+            <RiskAssessment portfolio={portfolioAssets} disabled={!isConnected || loading || !isMoralisApiConfigured} />
           </div>
           <div className="lg:col-span-1 flex flex-col gap-6">
-            <TokenSwap tokens={tokens} disabled={!isConnected || loading || !isApiConfigured} />
+            <TokenSwap tokens={tokens} disabled={!isConnected || loading || !is1inchApiConfigured} />
           </div>
         </div>
-        {isConnected && isApiConfigured && isMoralisApiConfigured && (
+        {isConnected && isMoralisApiConfigured && (
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 <Card>
                     <CardHeader>

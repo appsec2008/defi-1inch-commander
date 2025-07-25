@@ -142,7 +142,7 @@ export function PortfolioOverview({ assets = [], loading, isApiConfigured }: Por
             ) : (
               <TableRow>
                 <TableCell colSpan={5} className="text-center h-24">
-                  {isApiConfigured ? 'No assets found.' : '1inch API Key not configured.'}
+                  {isApiConfigured ? 'No assets found.' : 'Moralis API Key not configured.'}
                 </TableCell>
               </TableRow>
             )}
