@@ -46,6 +46,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'logo.moralis.io',
+        port: '',
+        pathname: '/**',
+      }
     ],
   },
   async headers() {
