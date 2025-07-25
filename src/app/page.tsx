@@ -22,8 +22,7 @@ export default function Home() {
 
   // These checks are for UI feedback only. The actual API calls use server-side keys.
   const is1inchApiConfigured = !!process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
-  const isMoralisApiConfigured = !!process.env.NEXT_PUBLIC_MORALIS_API_KEY && process.env.NEXT_PUBLIC_MORALIS_API_KEY !== 'YOUR_MORALIS_API_KEY_HERE';
-
+  const isMoralisApiConfigured = process.env.NEXT_PUBLIC_MORALIS_API_KEY_IS_CONFIGURED === 'true';
 
   useEffect(() => {
     async function fetchData() {
@@ -31,7 +30,6 @@ export default function Home() {
         setLoading(true);
         const promises = [];
         
-        // We check for the public key for UI feedback, but the action uses the private key.
         if (isMoralisApiConfigured) {
           promises.push(getPortfolioAction(address));
         } else {
