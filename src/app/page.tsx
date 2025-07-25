@@ -1,71 +1,119 @@
+"use client";
+
 import { Header } from "@/components/dashboard/header";
 import { PortfolioOverview } from "@/components/dashboard/portfolio-overview";
 import { RiskAssessment } from "@/components/dashboard/risk-assessment";
 import { TokenSwap } from "@/components/dashboard/token-swap";
 import { getPortfolioAssets, getTokens } from "@/services/1inch";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal } from "lucide-react";
+import { Terminal, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAccount, useDisconnect } from "wagmi";
+import { useEffect, useState } from "react";
+import type { Asset, Token } from "@/lib/types";
+import { Button } from "@/components/ui/button";
 
+export default function Home() {
+  const { address, isConnected } = useAccount();
+  const [portfolioAssets, setPortfolioAssets] = useState<Asset[]>([]);
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [apiResponses, setApiResponses] = useState({ portfolio: {}, tokens: {} });
 
-export default async function Home() {
-  const portfolioAssets = await getPortfolioAssets();
-  const tokens = await getTokens();
+  const isApiConfigured = process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_API_KEY_HERE';
 
-  const isApiConfigured = process.env.ONE_INCH_API_KEY && process.env.ONE_INCH_API_KEY !== 'YOUR_API_KEY_HERE';
+  useEffect(() => {
+    async function fetchData() {
+      if (isConnected && address && isApiConfigured) {
+        setLoading(true);
+        const [portfolioData, tokensData] = await Promise.all([
+          getPortfolioAssets(address),
+          getTokens(),
+        ]);
+        setPortfolioAssets(portfolioData.assets);
+        setTokens(tokensData.tokens);
+        setApiResponses({ portfolio: portfolioData.raw, tokens: tokensData.raw });
+        setLoading(false);
+      } else {
+        setLoading(false);
+        setPortfolioAssets([]);
+        setTokens([]);
+        setApiResponses({ portfolio: {}, tokens: {} });
+      }
+    }
+    fetchData();
+  }, [isConnected, address, isApiConfigured]);
 
   return (
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1 p-4 sm:p-6 md:p-8">
+        {!isConnected && (
+           <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Welcome to DeFi Commander</CardTitle>
+              <CardDescription>Connect your wallet to get started.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center justify-center text-center p-8">
+               <Wallet className="w-16 h-16 text-primary mb-4" />
+               <h3 className="text-lg font-semibold mb-2">Please Connect Your Wallet</h3>
+               <p className="text-muted-foreground mb-4 max-w-md">
+                 To view your portfolio, analyze risks, and swap tokens, you need to connect a crypto wallet.
+               </p>
+               {/* The connect button is in the header */}
+             </CardContent>
+           </Card>
+        )}
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 flex flex-col gap-6">
-            {!isApiConfigured && (
+            {!isApiConfigured && isConnected && (
               <Alert>
                 <Terminal className="h-4 w-4" />
                 <AlertTitle>API Key Not Configured</AlertTitle>
                 <AlertDescription>
-                  Please add your 1inch API key to the <code>.env</code> file to see live portfolio data. Displaying empty data.
+                  Please add your 1inch API key to the <code>.env.local</code> file to see live portfolio data. Displaying empty data.
                 </AlertDescription>
               </Alert>
             )}
-            <PortfolioOverview assets={portfolioAssets} />
-            <RiskAssessment portfolio={portfolioAssets} />
+            <PortfolioOverview assets={portfolioAssets} loading={loading} />
+            <RiskAssessment portfolio={portfolioAssets} disabled={!isConnected || loading} />
           </div>
           <div className="lg:col-span-1 flex flex-col gap-6">
-            <TokenSwap tokens={tokens} />
+            <TokenSwap tokens={tokens} disabled={!isConnected || loading} />
           </div>
         </div>
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Portfolio API Response</CardTitle>
-                    <CardDescription>Raw JSON data from the 1inch portfolio endpoint.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ScrollArea className="h-[400px] w-full bg-secondary/50 rounded-md p-4">
-                        <pre className="text-xs text-muted-foreground">
-                            {JSON.stringify(portfolioAssets, null, 2)}
-                        </pre>
-                    </ScrollArea>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Tokens API Response</CardTitle>
-                    <CardDescription>Raw JSON data from the 1inch tokens endpoint.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ScrollArea className="h-[400px] w-full bg-secondary/50 rounded-md p-4">
-                        <pre className="text-xs text-muted-foreground">
-                            {JSON.stringify(tokens.slice(0, 20), null, 2)}
-                        </pre>
-                         <p className="text-xs text-center text-muted-foreground mt-2">(Showing first 20 tokens for brevity)</p>
-                    </ScrollArea>
-                </CardContent>
-            </Card>
-        </div>
+        {isConnected && (
+            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Portfolio API Response</CardTitle>
+                        <CardDescription>Raw JSON data from the 1inch portfolio endpoint.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ScrollArea className="h-[400px] w-full bg-secondary/50 rounded-md p-4">
+                            <pre className="text-xs text-muted-foreground">
+                                {JSON.stringify(apiResponses.portfolio, null, 2)}
+                            </pre>
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Tokens API Response</CardTitle>
+                        <CardDescription>Raw JSON data from the 1inch tokens endpoint.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ScrollArea className="h-[400px] w-full bg-secondary/50 rounded-md p-4">
+                            <pre className="text-xs text-muted-foreground">
+                                {JSON.stringify(apiResponses.tokens, null, 2)}
+                            </pre>
+                             <p className="text-xs text-center text-muted-foreground mt-2">(Showing first 100 tokens)</p>
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
+            </div>
+        )}
       </main>
     </div>
   );

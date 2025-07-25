@@ -1,18 +1,13 @@
-
 import type { Asset, Token } from "@/lib/types";
 
 const API_BASE = "https://api.1inch.dev";
-
-// A default address to showcase the functionality
-const DEFAULT_WALLET_ADDRESS = "0xde0b295669a9fd93d5f28d9ec85e40f4cb697bae"; 
 const CHAIN_ID = "1"; // Ethereum Mainnet
 
 async function fetch1inch(path: string) {
-  const apiKey = process.env.ONE_INCH_API_KEY;
+  const apiKey = process.env.NEXT_PUBLIC_ONE_INCH_API_KEY;
   if (!apiKey || apiKey === "YOUR_API_KEY_HERE") {
-    console.error("1inch API key is not set. Please add it to your .env file.");
-    // Return empty/default data to avoid crashing the app
-    return null;
+    console.error("1inch API key is not set. Please add it to your .env.local file.");
+    return { error: "API key not configured." };
   }
 
   const response = await fetch(`${API_BASE}${path}`, {
@@ -20,59 +15,56 @@ async function fetch1inch(path: string) {
       Authorization: `Bearer ${apiKey}`,
       "accept": "application/json",
     },
-    cache: 'no-store' // Ensure fresh data on every request
+    cache: 'no-store'
   });
 
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({})); // Attempt to parse error body
-    console.error(`1inch API error: ${response.status} ${response.statusText}`, errorBody);
-    return null;
+    const errorBody = await response.json().catch(() => ({ description: response.statusText }));
+    console.error(`1inch API error: ${errorBody.description}`, errorBody);
+    return { error: errorBody.description };
   }
 
   return response.json();
 }
 
-export async function getPortfolioAssets(): Promise<Asset[]> {
-    const data = await fetch1inch(`/portfolio/v1/portfolio/${CHAIN_ID}/wallets/${DEFAULT_WALLET_ADDRESS}`);
-    
-    if (!data || !data.length) {
-        return [];
-    }
+export async function getPortfolioAssets(address: string): Promise<{ assets: Asset[], raw: any }> {
+  const data = await fetch1inch(`/portfolio/v2/portfolio/${address}?chains=${CHAIN_ID}`);
+  
+  if (!data || data.error || !data.result) {
+    return { assets: [], raw: data };
+  }
 
-    // The API returns an array of portfolio info for different chains, we find the one for our CHAIN_ID
-    const ethPortfolio = data.find((p: any) => p.chain_id === CHAIN_ID);
+  const ethPortfolio = data.result.find((p: any) => p.chain_id === parseInt(CHAIN_ID));
 
-    if (!ethPortfolio || !ethPortfolio.tokens) {
-        return [];
-    }
-    
-    const assets: Asset[] = ethPortfolio.tokens.map((asset: any) => ({
-        id: asset.token.address,
-        name: asset.token.name,
-        symbol: asset.token.symbol,
-        icon: asset.token.logo, 
-        balance: asset.balance, // Balance seems to be pre-calculated
-        price: asset.token.price,
-        change24h: asset.token.price_24h_change_percent || 0,
-    }));
+  if (!ethPortfolio || !ethPortfolio.positions) {
+    return { assets: [], raw: data };
+  }
 
-    return assets;
+  const assets: Asset[] = ethPortfolio.positions.map((asset: any) => ({
+    id: asset.token.address,
+    name: asset.token.name,
+    symbol: asset.token.symbol,
+    icon: asset.token.logo,
+    balance: asset.balance,
+    price: asset.token.price,
+    change24h: asset.token.price_24h_change_percent || 0,
+  }));
+
+  return { assets, raw: data };
 }
 
+export async function getTokens(): Promise<{ tokens: Token[], raw: any }> {
+  const data = await fetch1inch(`/token/v1.2/${CHAIN_ID}`);
+  
+  if (!data || data.error) {
+    return { tokens: [], raw: data };
+  }
 
-export async function getTokens(): Promise<Token[]> {
-    const data = await fetch1inch(`/token/v1.2/${CHAIN_ID}`);
-    
-    if (!data) {
-        return [];
-    }
-
-    // The token list can be very large, let's take a reasonable slice for the UI
-    const tokenList: Token[] = Object.values(data).slice(0, 100).map((token: any) => ({
-        symbol: token.symbol,
-        name: token.name,
-        icon: token.logoURI,
-    }));
-    
-    return tokenList;
+  const tokenList: Token[] = Object.values(data).slice(0, 100).map((token: any) => ({
+    symbol: token.symbol,
+    name: token.name,
+    icon: token.logoURI,
+  }));
+  
+  return { tokens: tokenList, raw: data };
 }

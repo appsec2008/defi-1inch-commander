@@ -1,6 +1,7 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
+import { Web3Provider } from '@/components/providers/web3-provider';
 
 export const metadata: Metadata = {
   title: 'DeFi 1inch Commander',
@@ -20,8 +21,10 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        {children}
-        <Toaster />
+        <Web3Provider>
+          {children}
+          <Toaster />
+        </Web3Provider>
       </body>
     </html>
   );

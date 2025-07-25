@@ -14,15 +14,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from 'next/image';
+import { Skeleton } from "@/components/ui/skeleton";
+
 
 interface PortfolioOverviewProps {
   assets: Asset[];
+  loading: boolean;
 }
 
-export function PortfolioOverview({ assets = [] }: PortfolioOverviewProps) {
+export function PortfolioOverview({ assets = [], loading }: PortfolioOverviewProps) {
   const totalValue = assets.reduce(
     (acc, asset) => acc + asset.balance * asset.price,
     0
@@ -32,7 +35,6 @@ export function PortfolioOverview({ assets = [] }: PortfolioOverviewProps) {
     0
   );
 
-  // Avoid division by zero if the total value was zero before the change
   const previousTotalValue = totalValue - totalChange24hValue;
   const totalChangePercent = previousTotalValue !== 0 ? (totalChange24hValue / previousTotalValue) * 100 : 0;
 
@@ -48,27 +50,31 @@ export function PortfolioOverview({ assets = [] }: PortfolioOverviewProps) {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardDescription>Portfolio Value</CardDescription>
-            <CardTitle className="text-4xl font-bold font-headline">
-              {formatCurrency(totalValue)}
-            </CardTitle>
+            {loading ? <Skeleton className="h-10 w-48 mt-1" /> : (
+              <CardTitle className="text-4xl font-bold font-headline">
+                {formatCurrency(totalValue)}
+              </CardTitle>
+            )}
           </div>
-          <div className="text-right mt-2 sm:mt-0">
-            <div
-              className={cn(
-                "flex items-center justify-end gap-1 text-lg font-semibold",
-                totalChange24hValue >= 0 ? "text-green-400" : "text-red-400"
-              )}
-            >
-              {totalChange24hValue >= 0 ? (
-                <ArrowUp className="h-5 w-5" />
-              ) : (
-                <ArrowDown className="h-5 w-5" />
-              )}
-              {formatCurrency(Math.abs(totalChange24hValue))} (
-              {totalChangePercent.toFixed(2)}%)
-            </div>
-            <p className="text-sm text-muted-foreground">Last 24 hours</p>
-          </div>
+           {loading ? <Skeleton className="h-10 w-36 mt-2 sm:mt-0" /> : (
+              <div className="text-right mt-2 sm:mt-0">
+                <div
+                  className={cn(
+                    "flex items-center justify-end gap-1 text-lg font-semibold",
+                    totalChange24hValue >= 0 ? "text-green-400" : "text-red-400"
+                  )}
+                >
+                  {totalChange24hValue >= 0 ? (
+                    <ArrowUp className="h-5 w-5" />
+                  ) : (
+                    <ArrowDown className="h-5 w-5" />
+                  )}
+                  {formatCurrency(Math.abs(totalChange24hValue))} (
+                  {totalChangePercent.toFixed(2)}%)
+                </div>
+                <p className="text-sm text-muted-foreground">Last 24 hours</p>
+              </div>
+           )}
         </div>
       </CardHeader>
       <CardContent>
@@ -83,7 +89,17 @@ export function PortfolioOverview({ assets = [] }: PortfolioOverviewProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {assets.length > 0 ? (
+            {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell><Skeleton className="h-8 w-32" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-6 w-20 ml-auto" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-6 w-20 ml-auto" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-6 w-24 ml-auto" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-6 w-16 ml-auto" /></TableCell>
+                    </TableRow>
+                ))
+            ) : assets.length > 0 ? (
               assets.map((asset) => (
                 <TableRow key={asset.id}>
                   <TableCell>
@@ -125,7 +141,7 @@ export function PortfolioOverview({ assets = [] }: PortfolioOverviewProps) {
             ) : (
               <TableRow>
                 <TableCell colSpan={5} className="text-center h-24">
-                  No assets found or API key not configured.
+                  No assets found.
                 </TableCell>
               </TableRow>
             )}

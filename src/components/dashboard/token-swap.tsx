@@ -18,17 +18,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowDown, ChevronsRight, Repeat } from "lucide-react";
+import { ArrowDown, ChevronsRight, Loader2, Repeat } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 
 interface TokenSwapProps {
   tokens: Token[];
+  disabled: boolean;
 }
 
-export function TokenSwap({ tokens = [] }: TokenSwapProps) {
-  const [fromToken, setFromToken] = useState<string | undefined>(tokens[0]?.symbol);
-  const [toToken, setToToken] = useState<string | undefined>(tokens[2]?.symbol);
+export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
+  const [fromToken, setFromToken] = useState<string | undefined>();
+  const [toToken, setToToken] = useState<string | undefined>();
   const [fromAmount, setFromAmount] = useState<string>("1.0");
   const [toAmount, setToAmount] = useState<string>("");
   const [isSwapping, setIsSwapping] = useState<boolean>(false);
@@ -38,14 +39,13 @@ export function TokenSwap({ tokens = [] }: TokenSwapProps) {
   const toTokenData = useMemo(() => tokens.find(t => t.symbol === toToken), [tokens, toToken]);
 
   useEffect(() => {
-    // Reset selections if tokens list changes and selected tokens are not available
     if (tokens.length > 0) {
-      if (!fromToken || !tokens.find(t => t.symbol === fromToken)) {
-        setFromToken(tokens[0]?.symbol);
-      }
-      if (!toToken || !tokens.find(t => t.symbol === toToken)) {
-        setToToken(tokens.find(t => t.symbol !== fromToken) || tokens[1]?.symbol);
-      }
+        if (!fromToken || !tokens.find(t => t.symbol === fromToken)) {
+            setFromToken(tokens.find(t => t.symbol === 'ETH')?.symbol || tokens[0]?.symbol);
+        }
+        if (!toToken || !tokens.find(t => t.symbol === toToken) || toToken === fromToken) {
+            setToToken(tokens.find(t => t.symbol === 'USDC' && t.symbol !== fromToken)?.symbol || tokens.find(t => t.symbol !== fromToken)?.symbol);
+        }
     }
   }, [tokens, fromToken, toToken]);
 
@@ -61,7 +61,7 @@ export function TokenSwap({ tokens = [] }: TokenSwapProps) {
     }
   }, [fromAmount, fromTokenData, toTokenData]);
 
-  const handleSwap = () => {
+  const handleSwapTokens = () => {
     const temp = fromToken;
     setFromToken(toToken);
     setToToken(temp);
@@ -80,7 +80,7 @@ export function TokenSwap({ tokens = [] }: TokenSwapProps) {
     }, 2000);
   };
 
-  if (tokens.length === 0) {
+  if (disabled && tokens.length === 0) {
     return (
        <Card>
         <CardHeader>
@@ -91,7 +91,7 @@ export function TokenSwap({ tokens = [] }: TokenSwapProps) {
         </CardHeader>
         <CardContent>
             <div className="text-center text-muted-foreground py-10">
-                Token list is unavailable. Please configure the API key.
+                Connect your wallet to start swapping.
             </div>
         </CardContent>
        </Card>
@@ -110,12 +110,12 @@ export function TokenSwap({ tokens = [] }: TokenSwapProps) {
         <div className="space-y-2 relative">
           <Label htmlFor="from-token">From</Label>
           <div className="flex gap-2">
-            <Select value={fromToken} onValueChange={setFromToken}>
+            <Select value={fromToken} onValueChange={setFromToken} disabled={disabled}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue>
                   <div className="flex items-center gap-2">
                     {fromTokenData?.icon && <Image src={fromTokenData.icon} alt={fromTokenData.name} width={20} height={20} />}
-                    <span>{fromToken}</span>
+                    <span>{fromTokenData?.symbol || 'Select'}</span>
                   </div>
                 </SelectValue>
               </SelectTrigger>
@@ -136,11 +136,12 @@ export function TokenSwap({ tokens = [] }: TokenSwapProps) {
               placeholder="0.0"
               value={fromAmount}
               onChange={(e) => setFromAmount(e.target.value)}
+              disabled={disabled}
             />
           </div>
 
           <div className="absolute right-4 top-1/2 -translate-y-1/2">
-            <Button variant="ghost" size="icon" onClick={handleSwap}>
+            <Button variant="ghost" size="icon" onClick={handleSwapTokens} disabled={disabled}>
               <Repeat className="w-4 h-4" />
             </Button>
           </div>
@@ -153,12 +154,12 @@ export function TokenSwap({ tokens = [] }: TokenSwapProps) {
         <div className="space-y-2">
           <Label htmlFor="to-token">To</Label>
           <div className="flex gap-2">
-            <Select value={toToken} onValueChange={setToToken}>
+            <Select value={toToken} onValueChange={setToToken} disabled={disabled}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue>
                     <div className="flex items-center gap-2">
                       {toTokenData?.icon && <Image src={toTokenData.icon} alt={toTokenData.name} width={20} height={20} />}
-                      <span>{toToken}</span>
+                      <span>{toTokenData?.symbol || 'Select'}</span>
                     </div>
                 </SelectValue>
               </SelectTrigger>
@@ -173,32 +174,34 @@ export function TokenSwap({ tokens = [] }: TokenSwapProps) {
                   ))}
               </SelectContent>
             </Select>
-            <Input id="to-token" type="number" placeholder="0.0" value={toAmount} readOnly />
+            <Input id="to-token" type="number" placeholder="0.0" value={toAmount} readOnly disabled={disabled}/>
           </div>
         </div>
 
         <div className="space-y-3 pt-2">
           <h4 className="text-sm font-medium">Optimal Route (Simulated)</h4>
           <div className="flex items-center justify-between text-sm p-3 rounded-lg bg-secondary/50">
-            <div className="flex items-center gap-2 font-mono flex-wrap">
-              <span>{fromToken}</span>
-              <ChevronsRight className="w-4 h-4 text-muted-foreground" />
-              <span>WETH</span>
-              <ChevronsRight className="w-4 h-4 text-muted-foreground" />
-              <span>1INCH</span>
-              <ChevronsRight className="w-4 h-4 text-muted-foreground" />
-              <span>{toToken}</span>
-            </div>
-            <span className="text-accent font-semibold">100%</span>
+             {disabled ? <span className="text-muted-foreground">Connect wallet to see route</span> : (
+                <div className="flex items-center gap-2 font-mono flex-wrap">
+                <span>{fromToken}</span>
+                <ChevronsRight className="w-4 h-4 text-muted-foreground" />
+                <span>WETH</span>
+                <ChevronsRight className="w-4 h-4 text-muted-foreground" />
+                <span>1INCH</span>
+                <ChevronsRight className="w-4 h-4 text-muted-foreground" />
+                <span>{toToken}</span>
+                </div>
+            )}
+            {!disabled && <span className="text-accent font-semibold">100%</span>}
           </div>
            <div className="text-xs text-muted-foreground space-y-1">
              <div className="flex justify-between">
                 <span>Price:</span>
-                <span className="font-mono">1 {fromToken} = {toAmount ? (parseFloat(toAmount)/parseFloat(fromAmount)).toFixed(4) : '...'} {toToken}</span>
+                <span className="font-mono">1 {fromToken} = {toAmount && fromAmount && !disabled ? (parseFloat(toAmount)/parseFloat(fromAmount)).toFixed(4) : '...'} {toToken}</span>
              </div>
              <div className="flex justify-between">
                 <span>Gas Fee:</span>
-                <span className="font-mono">~$5.42 (Simulated)</span>
+                <span className="font-mono">{disabled ? '...' :`~$5.42 (Simulated)`}</span>
              </div>
            </div>
         </div>
@@ -208,9 +211,9 @@ export function TokenSwap({ tokens = [] }: TokenSwapProps) {
           size="lg"
           className="w-full font-bold"
           onClick={handleExecuteSwap}
-          disabled={isSwapping || !fromAmount || !toAmount}
+          disabled={isSwapping || !fromAmount || !toAmount || disabled}
         >
-          {isSwapping ? "Swapping..." : "Swap"}
+          {isSwapping ? <Loader2 className="animate-spin" /> : "Swap"}
         </Button>
       </CardContent>
     </Card>

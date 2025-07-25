@@ -15,6 +15,7 @@ import { Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
 
 interface RiskAssessmentProps {
   portfolio: Asset[];
+  disabled: boolean;
 }
 
 type AnalysisResult = {
@@ -22,7 +23,7 @@ type AnalysisResult = {
   recommendations: string;
 } | null;
 
-export function RiskAssessment({ portfolio = [] }: RiskAssessmentProps) {
+export function RiskAssessment({ portfolio = [], disabled }: RiskAssessmentProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult>(null);
@@ -68,7 +69,7 @@ export function RiskAssessment({ portfolio = [] }: RiskAssessmentProps) {
             <p className="text-muted-foreground mb-4">
               Click the button to get an AI-powered analysis of your current holdings.
             </p>
-            <Button onClick={onAnalyze} disabled={isLoading || portfolio.length === 0}>
+            <Button onClick={onAnalyze} disabled={isLoading || portfolio.length === 0 || disabled}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -121,7 +122,7 @@ export function RiskAssessment({ portfolio = [] }: RiskAssessmentProps) {
             </Card>
             
             <div className="text-center">
-                <Button onClick={onAnalyze} variant="outline" disabled={isLoading}>
+                <Button onClick={onAnalyze} variant="outline" disabled={isLoading || disabled}>
                 {isLoading ? (
                     <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
