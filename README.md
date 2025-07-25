@@ -8,11 +8,11 @@ DeFi 1inch Commander is a next-generation decentralized finance (DeFi) dashboard
 
 This DApp empowers users to take command of their DeFi assets with a unified and intuitive interface. Key features include:
 
-*   **Portfolio Aggregation**: Connect your crypto wallet to see an aggregated view of your DeFi portfolio positions across the Ethereum network, powered by the Moralis API.
-*   **Balance & PnL Display**: Get a clear overview of your portfolio's total value, individual asset balances, and real-time prices.
+*   **Comprehensive Portfolio Aggregation**: Connect your crypto wallet to see an aggregated view of your DeFi portfolio positions across the Ethereum network. The dashboard displays both your native ETH balance and all your ERC20 tokens, powered by the Moralis API.
+*   **Balance & PnL Display**: Get a clear overview of your portfolio's total value, individual asset balances, and real-time prices, including 24-hour percentage changes.
 *   **AI-Powered Risk Assessment**: Leverage the power of Google's Gemini through Genkit to analyze your portfolio's risk exposure. Receive a detailed summary and actionable recommendations to mitigate risks.
 *   **Token Swapping**: Seamlessly swap tokens directly from the dashboard, leveraging the 1inch Aggregation Protocol to ensure the best possible rates.
-*   **Optimal Trade Routing**: The swap interface displays the optimal trading route found by the 1inch API, giving you transparency into how your trade is executed.
+*   **API Transparency**: For developers and curious users, the dashboard displays the raw JSON responses from the Moralis API, showing exactly what data is being used to populate the portfolio and price information.
 
 ## Why We Built It
 
@@ -26,6 +26,10 @@ We built DeFi 1inch Commander to solve these problems by:
 
 Our goal is to create a powerful yet user-friendly command center for anyone interacting with the world of decentralized finance.
 
+## Development Log
+
+For a summary of recent development activities, please see the [Daily Summary](./daily-summary.md).
+
 ## Technical Architecture
 
 The DApp is built on a modern, robust, and scalable tech stack, designed for a great developer and user experience.
@@ -37,7 +41,7 @@ The DApp is built on a modern, robust, and scalable tech stack, designed for a g
 *   **Blockchain Connectivity**: **Wagmi** and **Viem** provide robust hooks and utilities for interacting with the Ethereum blockchain.
 *   **Wallet Integration**: **WalletConnect (Web3Modal)** for seamless and secure connection to a wide range of crypto wallets.
 *   **DeFi Data APIs**: 
-    *   **Moralis API**: Used for fetching ERC20 token balances and prices for portfolio aggregation.
+    *   **Moralis API**: Used for fetching native balance, ERC20 token balances, and token prices for portfolio aggregation.
     *   **1inch API**: Used for fetching a comprehensive list of swappable tokens and for executing swaps.
 
 ## How to Run the Project
@@ -69,6 +73,7 @@ To get a local copy up and running, follow these simple steps.
     *   `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`: Your Project ID from [WalletConnect Cloud](https://cloud.walletconnect.com/).
     *   `GEMINI_API_KEY`: Your API key for the Gemini API from [Google AI Studio](https://aistudio.google.com/app/apikey).
     *   `MORALIS_API_KEY`: Your API key from [Moralis](https://admin.moralis.io/).
+    *   `NEXT_PUBLIC_MORALIS_API_KEY_IS_CONFIGURED`: Set this to `true` to let the client-side know the server key is available.
 
     Your `.env` file should look like this:
     ```
@@ -76,6 +81,7 @@ To get a local copy up and running, follow these simple steps.
     NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=YOUR_WALLETCONNECT_PROJECT_ID_HERE
     GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
     MORALIS_API_KEY=YOUR_MORALIS_API_KEY_HERE
+    NEXT_PUBLIC_MORALIS_API_KEY_IS_CONFIGURED=true
     ```
 
 4.  **Run the development server:**
