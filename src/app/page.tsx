@@ -40,7 +40,7 @@ export default function Home() {
             setTokens(tokensResult.tokens);
         }
         
-        setApiResponses({ portfolio: portfolioResult.raw, tokens: tokensResult.raw });
+        setApiResponses({ portfolio: portfolioResult.raw || {}, tokens: tokensResult.raw || {} });
         setLoading(false);
       } else {
         setLoading(false);
@@ -82,14 +82,14 @@ export default function Home() {
                 </AlertDescription>
               </Alert>
             )}
-            <PortfolioOverview assets={portfolioAssets} loading={loading} isApiConfigured={isApiConfigured} />
-            <RiskAssessment portfolio={portfolioAssets} disabled={!isConnected || loading || !isApiConfigured} />
+            <PortfolioOverview assets={portfolioAssets} loading={loading} isApiConfigured={isApiConfigured && isMoralisApiConfigured} />
+            <RiskAssessment portfolio={portfolioAssets} disabled={!isConnected || loading || !isApiConfigured || !isMoralisApiConfigured} />
           </div>
           <div className="lg:col-span-1 flex flex-col gap-6">
             <TokenSwap tokens={tokens} disabled={!isConnected || loading || !isApiConfigured} />
           </div>
         </div>
-        {isConnected && isApiConfigured && (
+        {isConnected && isApiConfigured && isMoralisApiConfigured && (
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 <Card>
                     <CardHeader>

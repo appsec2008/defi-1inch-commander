@@ -34,13 +34,12 @@ async function fetchMoralis(path: string, params?: URLSearchParams) {
   }
 }
 
-async function getTokenPrices(tokenAddresses: string[]) {
+async function getTokenPrices(tokenAddresses: string[]): Promise<any> {
     const params = new URLSearchParams({
         chain: CHAIN_ID,
     });
-    const url = `/erc20/price?${params.toString()}`;
+    const url = `/erc20/price`;
     
-    // Moralis price endpoint takes token addresses in the body for POST request
     try {
         const response = await fetch(`${API_BASE}${url}`, {
             method: 'POST',
@@ -49,19 +48,21 @@ async function getTokenPrices(tokenAddresses: string[]) {
                 "X-API-Key": process.env.MORALIS_API_KEY!,
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ tokens: tokenAddresses.map(address => ({ token_address: address })) }),
+            body: JSON.stringify({
+                "tokens": tokenAddresses.map(address => ({ "token_address": address, "chain": CHAIN_ID })) 
+            }),
             cache: 'no-store'
         });
 
         if (!response.ok) {
             const errorBody = await response.json().catch(() => ({ message: response.statusText }));
-            console.error(`Moralis API error: ${errorBody.message}`, { status: response.status, body: errorBody });
+            console.error(`Moralis API error on prices: ${errorBody.message}`, { status: response.status, body: errorBody });
             return { error: errorBody.message || response.statusText };
         }
         return response.json();
 
     } catch (error: any) {
-        console.error("Failed to fetch from Moralis API:", error);
+        console.error("Failed to fetch token prices from Moralis API:", error);
         return { error: error.message || "Failed to fetch" };
     }
 }
@@ -71,22 +72,21 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
   const balancesData = await fetchMoralis(`/${address}/erc20`, new URLSearchParams({ chain: CHAIN_ID }));
 
   if (!balancesData || balancesData.error || !Array.isArray(balancesData)) {
-    return { assets: [], raw: balancesData, error: balancesData?.error };
+    return { assets: [], raw: { balances: balancesData }, error: balancesData?.error };
   }
 
   if (balancesData.length === 0) {
-      return { assets: [], raw: balancesData };
+      return { assets: [], raw: { balances: [] } };
   }
 
   const tokenAddresses = balancesData.map((token: any) => token.token_address);
   const pricesData = await getTokenPrices(tokenAddresses);
 
-  if (!pricesData || pricesData.error || !Array.isArray(pricesData)) {
-    // We can still proceed without prices, they just won't show a value
-    console.warn("Could not fetch token prices. Value will be displayed as 0.");
+  if (!pricesData || pricesData.error || !Array.isArray(pricesData.result)) {
+    console.warn("Could not fetch token prices. Value will be displayed as 0.", pricesData?.error);
   }
 
-  const priceMap = new Map((pricesData || []).map((price: any) => [price.token_address, price.usdPrice]));
+  const priceMap = new Map((pricesData?.result || []).map((price: any) => [price.token_address, price.usdPrice]));
   
   const assets: Asset[] = balancesData.map((asset: any) => {
     const balance = Number(asset.balance) / (10 ** Number(asset.decimals));
