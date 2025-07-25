@@ -5,6 +5,9 @@ import { TokenSwap } from "@/components/dashboard/token-swap";
 import { getPortfolioAssets, getTokens } from "@/services/1inch";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 
 export default async function Home() {
   const portfolioAssets = await getPortfolioAssets();
@@ -33,6 +36,35 @@ export default async function Home() {
           <div className="lg:col-span-1 flex flex-col gap-6">
             <TokenSwap tokens={tokens} />
           </div>
+        </div>
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Portfolio API Response</CardTitle>
+                    <CardDescription>Raw JSON data from the 1inch portfolio endpoint.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ScrollArea className="h-[400px] w-full bg-secondary/50 rounded-md p-4">
+                        <pre className="text-xs text-muted-foreground">
+                            {JSON.stringify(portfolioAssets, null, 2)}
+                        </pre>
+                    </ScrollArea>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Tokens API Response</CardTitle>
+                    <CardDescription>Raw JSON data from the 1inch tokens endpoint.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ScrollArea className="h-[400px] w-full bg-secondary/50 rounded-md p-4">
+                        <pre className="text-xs text-muted-foreground">
+                            {JSON.stringify(tokens.slice(0, 20), null, 2)}
+                        </pre>
+                         <p className="text-xs text-center text-muted-foreground mt-2">(Showing first 20 tokens for brevity)</p>
+                    </ScrollArea>
+                </CardContent>
+            </Card>
         </div>
       </main>
     </div>
