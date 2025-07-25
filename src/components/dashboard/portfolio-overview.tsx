@@ -1,4 +1,4 @@
-import type { Asset } from "@/lib/mock-data";
+import type { Asset } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -16,22 +16,25 @@ import {
 } from "@/components/ui/table";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { iconMap } from "@/lib/mock-data";
+import Image from 'next/image';
 
 interface PortfolioOverviewProps {
   assets: Asset[];
 }
 
-export function PortfolioOverview({ assets }: PortfolioOverviewProps) {
+export function PortfolioOverview({ assets = [] }: PortfolioOverviewProps) {
   const totalValue = assets.reduce(
     (acc, asset) => acc + asset.balance * asset.price,
     0
   );
-  const totalChange = assets.reduce(
-    (acc, asset) => acc + (asset.balance * asset.price * asset.change24h) / 100,
+  const totalChange24hValue = assets.reduce(
+    (acc, asset) => acc + (asset.balance * asset.price * (asset.change24h / 100)),
     0
   );
-  const totalChangePercent = (totalChange / (totalValue - totalChange)) * 100;
+
+  // Avoid division by zero if the total value was zero before the change
+  const previousTotalValue = totalValue - totalChange24hValue;
+  const totalChangePercent = previousTotalValue !== 0 ? (totalChange24hValue / previousTotalValue) * 100 : 0;
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("en-US", {
@@ -53,15 +56,15 @@ export function PortfolioOverview({ assets }: PortfolioOverviewProps) {
             <div
               className={cn(
                 "flex items-center justify-end gap-1 text-lg font-semibold",
-                totalChange >= 0 ? "text-green-400" : "text-red-400"
+                totalChange24hValue >= 0 ? "text-green-400" : "text-red-400"
               )}
             >
-              {totalChange >= 0 ? (
+              {totalChange24hValue >= 0 ? (
                 <ArrowUp className="h-5 w-5" />
               ) : (
                 <ArrowDown className="h-5 w-5" />
               )}
-              {formatCurrency(Math.abs(totalChange))} (
+              {formatCurrency(Math.abs(totalChange24hValue))} (
               {totalChangePercent.toFixed(2)}%)
             </div>
             <p className="text-sm text-muted-foreground">Last 24 hours</p>
@@ -80,13 +83,18 @@ export function PortfolioOverview({ assets }: PortfolioOverviewProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {assets.map((asset) => {
-              const Icon = iconMap[asset.icon];
-              return (
-                <TableRow key={asset.symbol}>
+            {assets.length > 0 ? (
+              assets.map((asset) => (
+                <TableRow key={asset.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      {Icon && <Icon className="w-8 h-8 text-primary" />}
+                      {asset.icon ? (
+                         <Image src={asset.icon} alt={`${asset.name} logo`} width={32} height={32} className="rounded-full" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-bold text-muted-foreground">
+                          {asset.symbol.charAt(0)}
+                        </div>
+                      )}
                       <div>
                         <div className="font-medium">{asset.name}</div>
                         <div className="text-sm text-muted-foreground">
@@ -113,8 +121,14 @@ export function PortfolioOverview({ assets }: PortfolioOverviewProps) {
                     {asset.change24h.toFixed(2)}%
                   </TableCell>
                 </TableRow>
-              );
-            })}
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center h-24">
+                  No assets found or API key not configured.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </CardContent>

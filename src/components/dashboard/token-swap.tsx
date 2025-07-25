@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import type { Token } from "@/lib/mock-data";
+import type { Token } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -20,15 +20,15 @@ import {
 } from "@/components/ui/select";
 import { ArrowDown, ChevronsRight, Repeat } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { iconMap } from "@/lib/mock-data";
+import Image from "next/image";
 
 interface TokenSwapProps {
   tokens: Token[];
 }
 
-export function TokenSwap({ tokens }: TokenSwapProps) {
-  const [fromToken, setFromToken] = useState<string>(tokens[0].symbol);
-  const [toToken, setToToken] = useState<string>(tokens[2].symbol);
+export function TokenSwap({ tokens = [] }: TokenSwapProps) {
+  const [fromToken, setFromToken] = useState<string | undefined>(tokens[0]?.symbol);
+  const [toToken, setToToken] = useState<string | undefined>(tokens[2]?.symbol);
   const [fromAmount, setFromAmount] = useState<string>("1.0");
   const [toAmount, setToAmount] = useState<string>("");
   const [isSwapping, setIsSwapping] = useState<boolean>(false);
@@ -37,23 +37,34 @@ export function TokenSwap({ tokens }: TokenSwapProps) {
   const fromTokenData = useMemo(() => tokens.find(t => t.symbol === fromToken), [tokens, fromToken]);
   const toTokenData = useMemo(() => tokens.find(t => t.symbol === toToken), [tokens, toToken]);
 
-  const FromTokenIcon = fromTokenData ? iconMap[fromTokenData.icon] : null;
-  const ToTokenIcon = toTokenData ? iconMap[toTokenData.icon] : null;
+  useEffect(() => {
+    // Reset selections if tokens list changes and selected tokens are not available
+    if (tokens.length > 0) {
+      if (!fromToken || !tokens.find(t => t.symbol === fromToken)) {
+        setFromToken(tokens[0]?.symbol);
+      }
+      if (!toToken || !tokens.find(t => t.symbol === toToken)) {
+        setToToken(tokens.find(t => t.symbol !== fromToken) || tokens[1]?.symbol);
+      }
+    }
+  }, [tokens, fromToken, toToken]);
 
   useEffect(() => {
-    if (fromAmount && !isNaN(parseFloat(fromAmount))) {
-      // Simulate API call for quote
-      const simulatedPrice = 13.37; // e.g., 1 BTC = 13.37 ETH
+    if (fromAmount && !isNaN(parseFloat(fromAmount)) && fromTokenData && toTokenData) {
+      // In a real app, this is where you'd call the 1inch API for a quote
+      // For now, we'll simulate a quote based on some made up price relationship
+      const simulatedPrice = (fromTokenData.symbol.length / toTokenData.symbol.length) * 1.337;
       const calculatedToAmount = parseFloat(fromAmount) * simulatedPrice;
       setToAmount(calculatedToAmount.toFixed(5));
     } else {
       setToAmount("");
     }
-  }, [fromAmount, fromToken, toToken]);
+  }, [fromAmount, fromTokenData, toTokenData]);
 
   const handleSwap = () => {
+    const temp = fromToken;
     setFromToken(toToken);
-    setToToken(fromToken);
+    setToToken(temp);
   };
 
   const handleExecuteSwap = () => {
@@ -69,6 +80,24 @@ export function TokenSwap({ tokens }: TokenSwapProps) {
     }, 2000);
   };
 
+  if (tokens.length === 0) {
+    return (
+       <Card>
+        <CardHeader>
+            <CardTitle className="font-headline">Token Swap</CardTitle>
+            <CardDescription>
+            Find the best rates for your token swaps.
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            <div className="text-center text-muted-foreground py-10">
+                Token list is unavailable. Please configure the API key.
+            </div>
+        </CardContent>
+       </Card>
+    )
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -82,26 +111,23 @@ export function TokenSwap({ tokens }: TokenSwapProps) {
           <Label htmlFor="from-token">From</Label>
           <div className="flex gap-2">
             <Select value={fromToken} onValueChange={setFromToken}>
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger className="w-[150px]">
                 <SelectValue>
                   <div className="flex items-center gap-2">
-                    {FromTokenIcon && <FromTokenIcon className="w-5 h-5" />}
+                    {fromTokenData?.icon && <Image src={fromTokenData.icon} alt={fromTokenData.name} width={20} height={20} />}
                     <span>{fromToken}</span>
                   </div>
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {tokens.map((token) => {
-                  const Icon = iconMap[token.icon];
-                  return (
-                    <SelectItem key={token.symbol} value={token.symbol} disabled={token.symbol === toToken}>
-                      <div className="flex items-center gap-2">
-                        {Icon && <Icon className="w-5 h-5" />}
-                        <span>{token.symbol}</span>
-                      </div>
-                    </SelectItem>
-                  );
-                })}
+                {tokens.map((token) => (
+                  <SelectItem key={token.symbol} value={token.symbol} disabled={token.symbol === toToken}>
+                    <div className="flex items-center gap-2">
+                      {token.icon && <Image src={token.icon} alt={token.name} width={20} height={20} />}
+                      <span>{token.symbol}</span>
+                    </div>
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Input
@@ -128,26 +154,23 @@ export function TokenSwap({ tokens }: TokenSwapProps) {
           <Label htmlFor="to-token">To</Label>
           <div className="flex gap-2">
             <Select value={toToken} onValueChange={setToToken}>
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger className="w-[150px]">
                 <SelectValue>
                     <div className="flex items-center gap-2">
-                      {ToTokenIcon && <ToTokenIcon className="w-5 h-5" />}
+                      {toTokenData?.icon && <Image src={toTokenData.icon} alt={toTokenData.name} width={20} height={20} />}
                       <span>{toToken}</span>
                     </div>
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {tokens.map((token) => {
-                  const Icon = iconMap[token.icon];
-                  return (
+                {tokens.map((token) => (
                     <SelectItem key={token.symbol} value={token.symbol} disabled={token.symbol === fromToken}>
                        <div className="flex items-center gap-2">
-                        {Icon && <Icon className="w-5 h-5" />}
+                        {token.icon && <Image src={token.icon} alt={token.name} width={20} height={20} />}
                         <span>{token.symbol}</span>
                       </div>
                     </SelectItem>
-                  );
-                })}
+                  ))}
               </SelectContent>
             </Select>
             <Input id="to-token" type="number" placeholder="0.0" value={toAmount} readOnly />
@@ -155,9 +178,9 @@ export function TokenSwap({ tokens }: TokenSwapProps) {
         </div>
 
         <div className="space-y-3 pt-2">
-          <h4 className="text-sm font-medium">Optimal Route</h4>
+          <h4 className="text-sm font-medium">Optimal Route (Simulated)</h4>
           <div className="flex items-center justify-between text-sm p-3 rounded-lg bg-secondary/50">
-            <div className="flex items-center gap-2 font-mono">
+            <div className="flex items-center gap-2 font-mono flex-wrap">
               <span>{fromToken}</span>
               <ChevronsRight className="w-4 h-4 text-muted-foreground" />
               <span>WETH</span>
@@ -171,11 +194,11 @@ export function TokenSwap({ tokens }: TokenSwapProps) {
            <div className="text-xs text-muted-foreground space-y-1">
              <div className="flex justify-between">
                 <span>Price:</span>
-                <span className="font-mono">1 {fromToken} = 13.37 {toToken}</span>
+                <span className="font-mono">1 {fromToken} = {toAmount ? (parseFloat(toAmount)/parseFloat(fromAmount)).toFixed(4) : '...'} {toToken}</span>
              </div>
              <div className="flex justify-between">
                 <span>Gas Fee:</span>
-                <span className="font-mono">~$5.42</span>
+                <span className="font-mono">~$5.42 (Simulated)</span>
              </div>
            </div>
         </div>

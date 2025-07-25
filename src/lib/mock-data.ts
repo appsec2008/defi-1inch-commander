@@ -1,21 +1,7 @@
-import type { LucideIcon } from "lucide-react";
+import type { Asset, Token } from "./types";
 import { Bitcoin, CircleDollarSign, Diamond } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-export type Asset = {
-  id: string;
-  name: string;
-  symbol: string;
-  icon: string;
-  balance: number;
-  price: number;
-  change24h: number;
-};
-
-export type Token = {
-  symbol: string;
-  name: string;
-  icon: string;
-};
 
 export const iconMap: { [key: string]: LucideIcon } = {
   Diamond,
