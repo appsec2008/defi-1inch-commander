@@ -4,9 +4,9 @@ const API_BASE = "https://api.1inch.dev";
 const CHAIN_ID = "1"; // Ethereum Mainnet
 
 async function fetch1inch(path: string) {
-  const apiKey = process.env.NEXT_PUBLIC_ONE_INCH_API_KEY;
-  if (!apiKey || apiKey === 'YOUR_API_KEY_HERE') {
-    console.error("1inch API key is not set. Please add it to your .env.local file.");
+  const apiKey = process.env.ONE_INCH_API_KEY;
+  if (!apiKey || apiKey === 'YOUR_1INCH_API_KEY_HERE') {
+    console.error("1inch API key is not set. Please add it to your .env file.");
     return { error: "API key not configured." };
   }
 
@@ -21,7 +21,7 @@ async function fetch1inch(path: string) {
 
     if (!response.ok) {
       const errorBody = await response.json().catch(() => ({ description: response.statusText }));
-      console.error(`1inch API error: ${errorBody.description}`, errorBody);
+      console.error(`1inch API error: ${errorBody.description}`, { status: response.status, body: errorBody });
       return { error: errorBody.description || response.statusText };
     }
 
@@ -68,8 +68,8 @@ export async function getTokens(): Promise<{ tokens: Token[], raw: any, error?: 
     const tokenList: Token[] = Object.values(data).slice(0, 100).map((token: any) => ({
       symbol: token.symbol,
       name: token.name,
-      icon: token.logoURI,
+      icon: token.logoURI
     }));
-    
+
     return { tokens: tokenList, raw: data };
 }

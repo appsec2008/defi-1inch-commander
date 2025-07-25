@@ -4,7 +4,7 @@ import { Header } from "@/components/dashboard/header";
 import { PortfolioOverview } from "@/components/dashboard/portfolio-overview";
 import { RiskAssessment } from "@/components/dashboard/risk-assessment";
 import { TokenSwap } from "@/components/dashboard/token-swap";
-import { getPortfolioAssets, getTokens } from "@/services/1inch";
+import { getPortfolioAction, getTokensAction } from "@/app/actions";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -20,15 +20,15 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [apiResponses, setApiResponses] = useState({ portfolio: {}, tokens: {} });
 
-  const isApiConfigured = process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_API_KEY_HERE';
+  const isApiConfigured = process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
 
   useEffect(() => {
     async function fetchData() {
       if (isConnected && address && isApiConfigured) {
         setLoading(true);
         const [portfolioResult, tokensResult] = await Promise.all([
-          getPortfolioAssets(address),
-          getTokens(),
+          getPortfolioAction(address),
+          getTokensAction(),
         ]);
         
         if (portfolioResult.assets) {
