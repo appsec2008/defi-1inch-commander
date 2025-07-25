@@ -16,7 +16,7 @@ This DApp empowers users to take command of their DeFi assets with a unified and
 
 ## Why We Built It
 
-The DeFi landscape is fragmented and can be intimidating for both new and experienced users. Managing assets across different protocols, finding the best swap rates, and understanding portfolio risk requires juggling multiple tools and a high level of expertise.
+The DeFi landscape is fragmented and can be intimidated for both new and experienced users. Managing assets across different protocols, finding the best swap rates, and understanding portfolio risk requires juggling multiple tools and a high level of expertise.
 
 We built DeFi 1inch Commander to solve these problems by:
 
@@ -61,15 +61,17 @@ To get a local copy up and running, follow these simple steps.
     ```
 
 3.  **Set up your environment variables:**
-    Create a file named `.env` in the root of your project. You will need to add two keys:
+    Create a file named `.env` in the root of your project. You will need to add the following keys:
 
     *   `NEXT_PUBLIC_ONE_INCH_API_KEY`: Your API key from the [1inch Developer Portal](https://portal.1inch.dev/).
     *   `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`: Your Project ID from [WalletConnect Cloud](https://cloud.walletconnect.com/).
+    *   `GEMINI_API_KEY`: Your API key for the Gemini API from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
     Your `.env` file should look like this:
     ```
     NEXT_PUBLIC_ONE_INCH_API_KEY=YOUR_1INCH_API_KEY_HERE
     NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=YOUR_WALLETCONNECT_PROJECT_ID_HERE
+    GEMINI_API_KEY=YOUR_GEMINI_API_KEY_HERE
     ```
 
 4.  **Run the development server:**
