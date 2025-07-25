@@ -12,13 +12,13 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const AnalyzePortfolioRiskInputSchema = z.object({
-  portfolioData: z.string().describe('Portfolio data from the 1inch API.'),
+  portfolioData: z.string().describe('A comprehensive JSON string containing portfolio, history, tokens, liquidity sources, presets, and health status from the 1inch API.'),
 });
 export type AnalyzePortfolioRiskInput = z.infer<typeof AnalyzePortfolioRiskInputSchema>;
 
 const AnalyzePortfolioRiskOutputSchema = z.object({
-  riskSummary: z.string().describe('A summary of the portfolio risk exposure.'),
-  recommendations: z.string().describe('Recommendations for mitigating risk.'),
+  riskSummary: z.string().describe("A detailed portfolio risk analysis considering token volatility, liquidity, and historical trading patterns."),
+  recommendations: z.string().describe("Suggested trading strategies to optimize returns and reduce risk, including advice on approvals and gas optimization for efficient trading."),
 });
 export type AnalyzePortfolioRiskOutput = z.infer<typeof AnalyzePortfolioRiskOutputSchema>;
 
@@ -30,12 +30,19 @@ const prompt = ai.definePrompt({
   name: 'analyzePortfolioRiskPrompt',
   input: {schema: AnalyzePortfolioRiskInputSchema},
   output: {schema: AnalyzePortfolioRiskOutputSchema},
-  prompt: `You are an expert in DeFi portfolio risk analysis.
+  prompt: `You are an expert portfolio risk analyst and crypto trading strategist.
 
-You will analyze the user's portfolio data and provide a risk summary and recommendations for mitigating risk.
+You will analyze the user's portfolio data and provide a detailed risk summary and actionable recommendations.
 
-Portfolio Data:
-{{{portfolioData}}}`,
+Given the following comprehensive data from the 1inch network:
+{{{portfolioData}}}
+
+Please provide a detailed:
+1. Portfolio risk analysis considering token volatility, liquidity, historical trading patterns, and overall market health.
+2. Suggested trading strategies to optimize returns and mitigate identified risks.
+3. Advice on token approvals and gas optimization for more efficient trading based on the provided data.
+
+Respond thoughtfully and practically. Structure your response into the 'riskSummary' and 'recommendations' output fields.`,
 });
 
 const analyzePortfolioRiskFlow = ai.defineFlow(

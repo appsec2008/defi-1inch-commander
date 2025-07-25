@@ -9,9 +9,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { handleRiskAnalysis } from "@/app/actions";
+import { handleComprehensiveRiskAnalysis } from "@/app/actions";
 import type { Asset } from "@/lib/types";
 import { Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
+import { useAccount } from "wagmi";
 
 interface RiskAssessmentProps {
   portfolio: Asset[];
@@ -24,22 +25,21 @@ type AnalysisResult = {
 } | null;
 
 export function RiskAssessment({ portfolio = [], disabled }: RiskAssessmentProps) {
+  const { address } = useAccount();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult>(null);
 
   const onAnalyze = async () => {
+    if (!address) {
+        setError("Wallet is not connected.");
+        return;
+    }
     setIsLoading(true);
     setError(null);
     setResult(null);
     try {
-      const portfolioString = JSON.stringify(
-        portfolio.map((p) => ({
-          symbol: p.symbol,
-          value: p.balance * p.price,
-        }))
-      );
-      const analysisResult = await handleRiskAnalysis(portfolioString);
+      const analysisResult = await handleComprehensiveRiskAnalysis(address);
       if (analysisResult.error) {
         setError(analysisResult.error);
       } else if (analysisResult.data) {
@@ -69,7 +69,7 @@ export function RiskAssessment({ portfolio = [], disabled }: RiskAssessmentProps
             <p className="text-muted-foreground mb-4">
               Click the button to get an AI-powered analysis of your current holdings.
             </p>
-            <Button onClick={onAnalyze} disabled={isLoading || portfolio.length === 0 || disabled}>
+            <Button onClick={onAnalyze} disabled={isLoading || disabled}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -87,7 +87,7 @@ export function RiskAssessment({ portfolio = [], disabled }: RiskAssessmentProps
             <Loader2 className="w-16 h-16 text-primary animate-spin mb-4" />
             <h3 className="text-lg font-semibold">Analyzing Portfolio...</h3>
             <p className="text-muted-foreground">
-              Our AI is crunching the numbers. This may take a moment.
+              Our AI is crunching the numbers with comprehensive data from 1inch. This may take a moment.
             </p>
           </div>
         )}
