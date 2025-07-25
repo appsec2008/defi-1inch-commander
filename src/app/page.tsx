@@ -21,10 +21,12 @@ export default function Home() {
   const [apiResponses, setApiResponses] = useState({ portfolio: {}, tokens: {} });
 
   const isApiConfigured = process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
+  const isMoralisApiConfigured = !!process.env.MORALIS_API_KEY && process.env.MORALIS_API_KEY !== 'YOUR_MORALIS_API_KEY_HERE';
+
 
   useEffect(() => {
     async function fetchData() {
-      if (isConnected && address && isApiConfigured) {
+      if (isConnected && address && isApiConfigured && isMoralisApiConfigured) {
         setLoading(true);
         const [portfolioResult, tokensResult] = await Promise.all([
           getPortfolioAction(address),
@@ -48,7 +50,7 @@ export default function Home() {
       }
     }
     fetchData();
-  }, [isConnected, address, isApiConfigured]);
+  }, [isConnected, address, isApiConfigured, isMoralisApiConfigured]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -92,7 +94,7 @@ export default function Home() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Portfolio API Response</CardTitle>
-                        <CardDescription>Raw JSON data from the 1inch portfolio endpoint.</CardDescription>
+                        <CardDescription>Raw JSON data from the Moralis portfolio endpoint.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <ScrollArea className="h-[400px] w-full bg-secondary/50 rounded-md p-4">

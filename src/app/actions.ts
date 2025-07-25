@@ -1,7 +1,8 @@
 'use server';
 
 import { analyzePortfolioRisk } from '@/ai/flows/analyze-portfolio-risk';
-import { getPortfolioAssets, getTokens } from '@/services/1inch';
+import { getTokens } from '@/services/1inch';
+import { getPortfolioAssets as getMoralisPortfolio } from '@/services/moralis';
 
 export async function handleRiskAnalysis(portfolio: string) {
   try {
@@ -14,7 +15,7 @@ export async function handleRiskAnalysis(portfolio: string) {
 }
 
 export async function getPortfolioAction(address: string) {
-  return getPortfolioAssets(address);
+  return getMoralisPortfolio(address);
 }
 
 export async function getTokensAction() {
