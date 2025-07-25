@@ -7,20 +7,22 @@ const API_BASE = "https://deep-index.moralis.io/api/v2.2";
 const CHAIN_ID = "eth";
 const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'; // Wrapped ETH address for price lookups
 
-async function fetchMoralis(path: string, params?: URLSearchParams) {
+async function fetchMoralis(path: string, options: RequestInit = {}) {
   const apiKey = process.env.MORALIS_API_KEY;
   if (!apiKey || apiKey === 'YOUR_MORALIS_API_KEY_HERE') {
     console.error("Moralis API key is not set. Please add it to your .env file.");
     return { error: "API key not configured." };
   }
 
-  const url = `${API_BASE}${path}${params ? `?${params.toString()}` : ''}`;
+  const url = `${API_BASE}${path}`;
 
   try {
     const response = await fetch(url, {
+      ...options,
       headers: {
         "accept": "application/json",
         "X-API-Key": apiKey,
+        ...options.headers,
       },
       cache: 'no-store'
     });
@@ -37,6 +39,7 @@ async function fetchMoralis(path: string, params?: URLSearchParams) {
     return { error: error.message || "Failed to fetch" };
   }
 }
+
 
 type MoralisPrice = {
     tokenName: string;
@@ -58,22 +61,23 @@ type PriceResponse = {
 async function getTokenPrices(tokenAddresses: string[]): Promise<PriceResponse> {
   if (tokenAddresses.length === 0) return { prices: {}, raw: null };
 
-  const params = new URLSearchParams({
-    chain: CHAIN_ID,
-    include: 'percent_change',
+  const response = await fetchMoralis(`/erc20/prices?chain=${CHAIN_ID}&include=percent_change`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        token_addresses: tokenAddresses
+      })
   });
   
-  const response = await fetchMoralis(`/erc20/prices?${params.toString()}`, new URLSearchParams(
-    tokenAddresses.map(addr => ['token_addresses', addr])
-  ));
-  
-  if (!response || response.error || !Array.isArray(response)) {
+  if (!response || response.error || !Array.isArray(response.result)) {
     console.error("Failed to fetch prices from Moralis", response?.error);
-    return { prices: {}, raw: response, error: response?.error };
+    return { prices: {}, raw: response, error: response?.error || 'Invalid price response' };
   }
 
   const priceMap: {[key: string]: MoralisPrice} = {};
-  response.forEach((priceInfo: MoralisPrice) => {
+  response.result.forEach((priceInfo: any) => {
     priceMap[priceInfo.tokenAddress.toLowerCase()] = priceInfo;
   });
 
@@ -84,8 +88,8 @@ async function getTokenPrices(tokenAddresses: string[]): Promise<PriceResponse> 
 export async function getPortfolioAssets(address: string): Promise<{ assets: Asset[], raw: any, rawPrices: any, error?: string }> {
   // Fetch both native balance and ERC20 balances in parallel
   const [nativeBalanceData, erc20BalancesData] = await Promise.all([
-    fetchMoralis(`/${address}/balance`, new URLSearchParams({ chain: CHAIN_ID })),
-    fetchMoralis(`/${address}/erc20`, new URLSearchParams({ chain: CHAIN_ID }))
+    fetchMoralis(`/${address}/balance?chain=${CHAIN_ID}`),
+    fetchMoralis(`/${address}/erc20?chain=${CHAIN_ID}`)
   ]);
 
   const rawResponses = {

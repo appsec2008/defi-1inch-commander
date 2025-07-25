@@ -58,7 +58,13 @@ const nextConfig: NextConfig = {
         hostname: 'cdn.moralis.io',
         port: '',
         pathname: '/**',
-      }
+      },
+      {
+        protocol: 'https',
+        hostname: 'deep-index.moralis.io',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   async headers() {
