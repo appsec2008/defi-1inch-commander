@@ -20,7 +20,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [apiResponses, setApiResponses] = useState({ portfolio: {}, tokens: {} });
 
-  const is1inchApiConfigured = process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
+  const is1inchApiConfigured = !!process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
   const isMoralisApiConfigured = !!process.env.MORALIS_API_KEY && process.env.MORALIS_API_KEY !== 'YOUR_MORALIS_API_KEY_HERE';
 
 
@@ -32,12 +32,14 @@ export default function Home() {
         if (isMoralisApiConfigured) {
           promises.push(getPortfolioAction(address));
         } else {
+          console.log("Moralis API not configured. Skipping portfolio fetch.");
           promises.push(Promise.resolve({ assets: [], raw: { error: 'Moralis API not configured.'}}));
         }
 
         if (is1inchApiConfigured) {
           promises.push(getTokensAction());
         } else {
+            console.log("1inch API not configured. Skipping tokens fetch.");
           promises.push(Promise.resolve({ tokens: [], raw: { error: '1inch API not configured.'}}));
         }
 
