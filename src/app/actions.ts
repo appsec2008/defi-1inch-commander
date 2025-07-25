@@ -3,7 +3,6 @@
 import { analyzePortfolioRisk } from '@/ai/flows/analyze-portfolio-risk';
 import { getTokens, getPortfolio, getHistory, getLiquiditySources, getPresets, getHealthCheck } from '@/services/1inch';
 import { getPortfolioAssets as getMoralisPortfolio } from '@/services/moralis';
-import { useAccount } from 'wagmi';
 
 export async function handleRiskAnalysis(portfolio: string) {
   try {
