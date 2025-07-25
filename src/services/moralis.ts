@@ -35,17 +35,20 @@ async function fetchMoralis(path: string, params?: URLSearchParams) {
 }
 
 async function getTokenPrices(tokenAddresses: string[]): Promise<any> {
-    const params = new URLSearchParams({
-        chain: CHAIN_ID,
-    });
-    const url = `/erc20/price`;
+    const apiKey = process.env.MORALIS_API_KEY;
+    if (!apiKey || apiKey === 'YOUR_MORALIS_API_KEY_HERE') {
+        console.error("Moralis API key is not set for getTokenPrices.");
+        return { error: "API key not configured." };
+    }
+
+    const url = `${API_BASE}/erc20/price`;
     
     try {
-        const response = await fetch(`${API_BASE}${url}`, {
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 "accept": "application/json",
-                "X-API-Key": process.env.MORALIS_API_KEY!,
+                "X-API-Key": apiKey,
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
