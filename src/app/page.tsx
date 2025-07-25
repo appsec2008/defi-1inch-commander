@@ -21,7 +21,7 @@ export default function Home() {
   const [apiResponses, setApiResponses] = useState({ portfolio: {}, tokens: {} });
 
   // These checks are for UI feedback only. The actual API calls use server-side keys.
-  const is1inchApiConfigured = !!process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
+  const is1inchApiConfigured = !!process.env.NEXT_PUBLIC_ONE_INCH_API_KEY;
   const isMoralisApiConfigured = process.env.NEXT_PUBLIC_MORALIS_API_KEY_IS_CONFIGURED === 'true';
 
   useEffect(() => {
