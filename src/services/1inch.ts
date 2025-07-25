@@ -24,7 +24,8 @@ async function fetch1inch(path: string) {
   });
 
   if (!response.ok) {
-    console.error(`1inch API error: ${response.statusText}`);
+    const errorBody = await response.json().catch(() => ({})); // Attempt to parse error body
+    console.error(`1inch API error: ${response.status} ${response.statusText}`, errorBody);
     return null;
   }
 
@@ -32,7 +33,7 @@ async function fetch1inch(path: string) {
 }
 
 export async function getPortfolioAssets(): Promise<Asset[]> {
-    const data = await fetch1inch(`/portfolio/v3/portfolio/${CHAIN_ID}/wallets/${DEFAULT_WALLET_ADDRESS}`);
+    const data = await fetch1inch(`/portfolio/v1/portfolio/${CHAIN_ID}/wallets/${DEFAULT_WALLET_ADDRESS}`);
     
     if (!data || !data.length) {
         return [];
@@ -75,3 +76,4 @@ export async function getTokens(): Promise<Token[]> {
     
     return tokenList;
 }
+
