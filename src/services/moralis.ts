@@ -1,6 +1,7 @@
 'use server';
 
 import type { Asset } from "@/lib/types";
+import { getTokenPrices as getDiaTokenPrices } from './dia';
 
 const API_BASE = "https://deep-index.moralis.io/api/v2.2";
 const CHAIN_ID = "eth";
@@ -36,43 +37,6 @@ async function fetchMoralis(path: string, params?: URLSearchParams) {
   }
 }
 
-async function getTokenPrices(tokenAddresses: string[]): Promise<any> {
-    const apiKey = process.env.MORALIS_API_KEY;
-    if (!apiKey || apiKey === 'YOUR_MORALIS_API_KEY_HERE') {
-        console.error("Moralis API key is not set for getTokenPrices.");
-        return { error: "API key not configured." };
-    }
-
-    const url = `${API_BASE}/erc20/price`;
-    
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                "accept": "application/json",
-                "X-API-Key": apiKey,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                "tokens": tokenAddresses.map(address => ({ "token_address": address, "chain": CHAIN_ID })) 
-            }),
-            cache: 'no-store'
-        });
-
-        if (!response.ok) {
-            const errorBody = await response.json().catch(() => ({ message: response.statusText }));
-            console.error(`Moralis API error on prices: ${errorBody.message}`, { status: response.status, body: errorBody });
-            return { error: errorBody.message || response.statusText };
-        }
-        return response.json();
-
-    } catch (error: any) {
-        console.error("Failed to fetch token prices from Moralis API:", error);
-        return { error: error.message || "Failed to fetch" };
-    }
-}
-
-
 export async function getPortfolioAssets(address: string): Promise<{ assets: Asset[], raw: any, error?: string }> {
   const balancesData = await fetchMoralis(`/${address}/erc20`, new URLSearchParams({ chain: CHAIN_ID }));
 
@@ -85,17 +49,11 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
   }
 
   const tokenAddresses = balancesData.map((token: any) => token.token_address);
-  const pricesData = await getTokenPrices(tokenAddresses);
+  const priceMap = await getDiaTokenPrices(tokenAddresses);
 
-  if (!pricesData || pricesData.error || !Array.isArray(pricesData.result)) {
-    console.warn("Could not fetch token prices. Value will be displayed as 0.", pricesData?.error);
-  }
-
-  const priceMap = new Map((pricesData?.result || []).map((price: any) => [price.token_address, price.usdPrice]));
-  
   const assets: Asset[] = balancesData.map((asset: any) => {
     const balance = Number(asset.balance) / (10 ** Number(asset.decimals));
-    const price = priceMap.get(asset.token_address) || 0;
+    const price = priceMap[asset.token_address] || 0;
 
     return {
         id: asset.token_address,
@@ -104,9 +62,9 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
         icon: asset.logo || '', // Moralis may provide a logo
         balance: balance,
         price: price,
-        change24h: 0, // Moralis balance endpoint does not provide 24h change
+        change24h: 0, // 24h change not available from this combination of APIs
     }
   });
 
-  return { assets, raw: { balances: balancesData, prices: pricesData || {} } };
+  return { assets, raw: { balances: balancesData, prices: priceMap } };
 }

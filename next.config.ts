@@ -51,6 +51,12 @@ const nextConfig: NextConfig = {
         hostname: 'logo.moralis.io',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.diadata.org',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
