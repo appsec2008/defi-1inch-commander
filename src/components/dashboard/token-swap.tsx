@@ -75,7 +75,6 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
       toast({
         title: "Swap Successful!",
         description: `Swapped ${fromAmount} ${fromToken} for ${toAmount} ${toToken}.`,
-        variant: "default",
       });
     }, 2000);
   };
@@ -91,7 +90,7 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
         </CardHeader>
         <CardContent>
             <div className="text-center text-muted-foreground py-10">
-                Connect your wallet to start swapping.
+                { disabled ? 'Connect your wallet to start swapping.' : 'Loading tokens...'}
             </div>
         </CardContent>
        </Card>

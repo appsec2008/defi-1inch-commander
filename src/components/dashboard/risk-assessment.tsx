@@ -42,7 +42,7 @@ export function RiskAssessment({ portfolio = [], disabled }: RiskAssessmentProps
       const analysisResult = await handleRiskAnalysis(portfolioString);
       if (analysisResult.error) {
         setError(analysisResult.error);
-      } else {
+      } else if (analysisResult.data) {
         setResult(analysisResult.data);
       }
     } catch (e) {

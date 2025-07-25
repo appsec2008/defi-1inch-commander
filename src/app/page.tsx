@@ -9,10 +9,9 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useAccount, useDisconnect } from "wagmi";
+import { useAccount } from "wagmi";
 import { useEffect, useState } from "react";
 import type { Asset, Token } from "@/lib/types";
-import { Button } from "@/components/ui/button";
 
 export default function Home() {
   const { address, isConnected } = useAccount();
@@ -27,13 +26,19 @@ export default function Home() {
     async function fetchData() {
       if (isConnected && address && isApiConfigured) {
         setLoading(true);
-        const [portfolioData, tokensData] = await Promise.all([
+        const [portfolioResult, tokensResult] = await Promise.all([
           getPortfolioAssets(address),
           getTokens(),
         ]);
-        setPortfolioAssets(portfolioData.assets);
-        setTokens(tokensData.tokens);
-        setApiResponses({ portfolio: portfolioData.raw, tokens: tokensData.raw });
+        
+        if (portfolioResult.assets) {
+            setPortfolioAssets(portfolioResult.assets);
+        }
+        if (tokensResult.tokens) {
+            setTokens(tokensResult.tokens);
+        }
+        
+        setApiResponses({ portfolio: portfolioResult.raw, tokens: tokensResult.raw });
         setLoading(false);
       } else {
         setLoading(false);
@@ -61,7 +66,6 @@ export default function Home() {
                <p className="text-muted-foreground mb-4 max-w-md">
                  To view your portfolio, analyze risks, and swap tokens, you need to connect a crypto wallet.
                </p>
-               {/* The connect button is in the header */}
              </CardContent>
            </Card>
         )}
@@ -72,18 +76,18 @@ export default function Home() {
                 <Terminal className="h-4 w-4" />
                 <AlertTitle>API Key Not Configured</AlertTitle>
                 <AlertDescription>
-                  Please add your 1inch API key to the <code>.env.local</code> file to see live portfolio data. Displaying empty data.
+                  Please add your 1inch API key to the <code>.env</code> file to see live portfolio data. Displaying empty data.
                 </AlertDescription>
               </Alert>
             )}
-            <PortfolioOverview assets={portfolioAssets} loading={loading} />
-            <RiskAssessment portfolio={portfolioAssets} disabled={!isConnected || loading} />
+            <PortfolioOverview assets={portfolioAssets} loading={loading} isApiConfigured={isApiConfigured} />
+            <RiskAssessment portfolio={portfolioAssets} disabled={!isConnected || loading || !isApiConfigured} />
           </div>
           <div className="lg:col-span-1 flex flex-col gap-6">
-            <TokenSwap tokens={tokens} disabled={!isConnected || loading} />
+            <TokenSwap tokens={tokens} disabled={!isConnected || loading || !isApiConfigured} />
           </div>
         </div>
-        {isConnected && (
+        {isConnected && isApiConfigured && (
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 <Card>
                     <CardHeader>

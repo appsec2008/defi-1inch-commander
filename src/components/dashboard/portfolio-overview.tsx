@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowDown, ArrowUp, Loader2 } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from 'next/image';
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,9 +23,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface PortfolioOverviewProps {
   assets: Asset[];
   loading: boolean;
+  isApiConfigured: boolean;
 }
 
-export function PortfolioOverview({ assets = [], loading }: PortfolioOverviewProps) {
+export function PortfolioOverview({ assets = [], loading, isApiConfigured }: PortfolioOverviewProps) {
   const totalValue = assets.reduce(
     (acc, asset) => acc + asset.balance * asset.price,
     0
@@ -141,7 +142,7 @@ export function PortfolioOverview({ assets = [], loading }: PortfolioOverviewPro
             ) : (
               <TableRow>
                 <TableCell colSpan={5} className="text-center h-24">
-                  No assets found.
+                  {isApiConfigured ? 'No assets found.' : '1inch API Key not configured.'}
                 </TableCell>
               </TableRow>
             )}
