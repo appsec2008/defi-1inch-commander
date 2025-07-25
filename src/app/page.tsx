@@ -20,8 +20,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [apiResponses, setApiResponses] = useState({ portfolio: {}, tokens: {} });
 
+  // These checks are for UI feedback only. The actual API calls use server-side keys.
   const is1inchApiConfigured = !!process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
-  const isMoralisApiConfigured = !!process.env.MORALIS_API_KEY && process.env.MORALIS_API_KEY !== 'YOUR_MORALIS_API_KEY_HERE';
+  const isMoralisApiConfigured = !!process.env.NEXT_PUBLIC_MORALIS_API_KEY && process.env.NEXT_PUBLIC_MORALIS_API_KEY !== 'YOUR_MORALIS_API_KEY_HERE';
 
 
   useEffect(() => {
@@ -29,17 +30,19 @@ export default function Home() {
       if (isConnected && address) {
         setLoading(true);
         const promises = [];
+        
+        // We check for the public key for UI feedback, but the action uses the private key.
         if (isMoralisApiConfigured) {
           promises.push(getPortfolioAction(address));
         } else {
-          console.log("Moralis API not configured. Skipping portfolio fetch.");
+          console.log("Moralis API not configured for UI. Skipping portfolio fetch.");
           promises.push(Promise.resolve({ assets: [], raw: { error: 'Moralis API not configured.'}}));
         }
 
         if (is1inchApiConfigured) {
           promises.push(getTokensAction());
         } else {
-            console.log("1inch API not configured. Skipping tokens fetch.");
+            console.log("1inch API not configured for UI. Skipping tokens fetch.");
           promises.push(Promise.resolve({ tokens: [], raw: { error: '1inch API not configured.'}}));
         }
 
@@ -94,7 +97,7 @@ export default function Home() {
                 </AlertDescription>
               </Alert>
             )}
-            <PortfolioOverview assets={portfolioAssets} loading={loading} isApiConfigured={isMoralisApiConfigured} />
+            <PortfolioOverview assets={portfolioAssets} loading={loading} isMoralisApiConfigured={isMoralisApiConfigured} />
             <RiskAssessment portfolio={portfolioAssets} disabled={!isConnected || loading || !isMoralisApiConfigured} />
           </div>
           <div className="lg:col-span-1 flex flex-col gap-6">
