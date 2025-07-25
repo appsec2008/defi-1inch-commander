@@ -20,6 +20,7 @@ async function fetch1inch(path: string) {
       Authorization: `Bearer ${apiKey}`,
       "accept": "application/json",
     },
+    cache: 'no-store' // Ensure fresh data on every request
   });
 
   if (!response.ok) {
@@ -31,18 +32,25 @@ async function fetch1inch(path: string) {
 }
 
 export async function getPortfolioAssets(): Promise<Asset[]> {
-    const data = await fetch1inch(`/portfolio/v4/portfolio/${CHAIN_ID}/wallets/${DEFAULT_WALLET_ADDRESS}/tokens/by-chain`);
+    const data = await fetch1inch(`/portfolio/v3/portfolio/${CHAIN_ID}/wallets/${DEFAULT_WALLET_ADDRESS}`);
     
     if (!data || !data.length) {
         return [];
     }
 
-    const assets: Asset[] = data[0].tokens.map((asset: any) => ({
+    // The API returns an array of portfolio info for different chains, we find the one for our CHAIN_ID
+    const ethPortfolio = data.find((p: any) => p.chain_id === CHAIN_ID);
+
+    if (!ethPortfolio || !ethPortfolio.tokens) {
+        return [];
+    }
+    
+    const assets: Asset[] = ethPortfolio.tokens.map((asset: any) => ({
         id: asset.token.address,
         name: asset.token.name,
         symbol: asset.token.symbol,
         icon: asset.token.logo, 
-        balance: asset.balance / (10 ** asset.token.decimals),
+        balance: asset.balance, // Balance seems to be pre-calculated
         price: asset.token.price,
         change24h: asset.token.price_24h_change_percent || 0,
     }));
@@ -50,15 +58,16 @@ export async function getPortfolioAssets(): Promise<Asset[]> {
     return assets;
 }
 
+
 export async function getTokens(): Promise<Token[]> {
     const data = await fetch1inch(`/token/v1.2/${CHAIN_ID}`);
     
-    if (!data || !data.tokens) {
+    if (!data) {
         return [];
     }
 
     // The token list can be very large, let's take a reasonable slice for the UI
-    const tokenList: Token[] = Object.values(data.tokens).slice(0, 50).map((token: any) => ({
+    const tokenList: Token[] = Object.values(data).slice(0, 100).map((token: any) => ({
         symbol: token.symbol,
         name: token.name,
         icon: token.logoURI,
