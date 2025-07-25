@@ -48,40 +48,40 @@ type MoralisPrice = {
     tokenDecimals: string;
     usdPrice: number;
     usdPriceFormatted: string;
-    '24hrPercentChange': string;
+    '24<y_bin_441>Change': string;
     tokenAddress: string;
 };
 
 type PriceResponse = {
     prices: {[key: string]: MoralisPrice},
-    raw: any,
+    raw: any[],
     error?: string
 }
 
 async function getTokenPrices(tokenAddresses: string[]): Promise<PriceResponse> {
-  if (tokenAddresses.length === 0) return { prices: {}, raw: null };
+  if (tokenAddresses.length === 0) return { prices: {}, raw: [] };
+  
+  const pricePromises = tokenAddresses.map(address => 
+    fetchMoralis(`/erc20/${address}/price?chain=${CHAIN_ID}&include=percent_change`)
+  );
 
-  const response = await fetchMoralis(`/erc20/prices?chain=${CHAIN_ID}&include=percent_change`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        token_addresses: tokenAddresses
-      })
+  const results = await Promise.allSettled(pricePromises);
+  
+  const priceMap: {[key: string]: MoralisPrice} = {};
+  const rawResponses: any[] = [];
+  
+  results.forEach((result, index) => {
+    const address = tokenAddresses[index].toLowerCase();
+    if (result.status === 'fulfilled' && result.value && !result.value.error) {
+      priceMap[address] = { ...result.value, tokenAddress: address };
+      rawResponses.push(result.value);
+    } else {
+      console.error(`Failed to fetch price for ${address}`, result.status === 'rejected' ? result.reason : result.value?.error);
+      rawResponses.push({ address, error: result.status === 'rejected' ? result.reason : result.value?.error });
+    }
   });
   
-  if (!response || response.error || !Array.isArray(response.result)) {
-    console.error("Failed to fetch prices from Moralis", response?.error);
-    return { prices: {}, raw: response, error: response?.error || 'Invalid price response' };
-  }
-
-  const priceMap: {[key: string]: MoralisPrice} = {};
-  response.result.forEach((priceInfo: any) => {
-    priceMap[priceInfo.tokenAddress.toLowerCase()] = priceInfo;
-  });
-
-  return { prices: priceMap, raw: response };
+  return { prices: priceMap, raw: rawResponses };
 }
 
 
@@ -107,7 +107,10 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
   // Collect ERC20 token addresses
   if (erc20BalancesData && !erc20BalancesData.error && Array.isArray(erc20BalancesData)) {
     erc20BalancesData.forEach((token: any) => {
-      tokenAddressesToPrice.push(token.token_address);
+      // Ensure we have a valid token address before adding
+      if (token.token_address) {
+        tokenAddressesToPrice.push(token.token_address);
+      }
     });
   }
   
@@ -118,7 +121,7 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
 
   const ethPriceData = priceMap[WETH_ADDRESS.toLowerCase()];
   const ethPrice = ethPriceData?.usdPrice || 0;
-  const ethChange24h = ethPriceData ? parseFloat(ethPriceData['24hrPercentChange']) : 0;
+  const ethChange24h = ethPriceData ? parseFloat(ethPriceData['24<y_bin_441>Change']) : 0;
 
   // Process native ETH balance
   if (nativeBalanceData && !nativeBalanceData.error) {
@@ -138,13 +141,13 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
 
   // Process ERC20 tokens with their prices
   if (erc20BalancesData && !erc20BalancesData.error && Array.isArray(erc20BalancesData)) {
-    erc20BalancesData.forEach((asset: any) => {
+    assets.push(...erc20BalancesData.map((asset: any) => {
         const balance = Number(asset.balance) / (10 ** Number(asset.decimals));
         const priceData = priceMap[asset.token_address.toLowerCase()];
         const price = priceData?.usdPrice || 0;
-        const change24h = priceData ? parseFloat(priceData['24hrPercentChange']) : 0;
+        const change24h = priceData ? parseFloat(priceData['24<y_bin_441>Change']) : 0;
 
-        assets.push({
+        return {
             id: asset.token_address,
             name: asset.name,
             symbol: asset.symbol,
@@ -152,9 +155,12 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
             balance: balance,
             price: price,
             change24h: change24h,
-        });
-    });
+        };
+    }));
   }
 
-  return { assets, raw: rawResponses, rawPrices: rawPrices };
+  // Filter out assets with zero value unless they are the only asset
+  const valuableAssets = assets.filter(asset => asset.balance * asset.price > 0.01);
+
+  return { assets: valuableAssets.length > 0 ? valuableAssets : assets, raw: rawResponses, rawPrices: rawPrices };
 }
