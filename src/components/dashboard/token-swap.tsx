@@ -18,7 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowDown, ChevronsRight, Loader2, Repeat } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ArrowDown, ChevronsRight, Loader2, Repeat, Terminal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 
@@ -79,24 +80,6 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
     }, 2000);
   };
 
-  if (disabled && tokens.length === 0) {
-    return (
-       <Card>
-        <CardHeader>
-            <CardTitle className="font-headline">Token Swap</CardTitle>
-            <CardDescription>
-            Find the best rates for your token swaps.
-            </CardDescription>
-        </CardHeader>
-        <CardContent>
-            <div className="text-center text-muted-foreground py-10">
-                { disabled ? 'Connect your wallet to start swapping.' : 'Loading tokens...'}
-            </div>
-        </CardContent>
-       </Card>
-    )
-  }
-
   return (
     <Card>
       <CardHeader>
@@ -106,6 +89,15 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {disabled && (
+           <Alert variant="destructive">
+            <Terminal className="h-4 w-4" />
+            <AlertTitle>1inch API Not Configured</AlertTitle>
+            <AlertDescription>
+              Add your 1inch API key to the <code>.env</code> file to enable token swapping.
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="space-y-2 relative">
           <Label htmlFor="from-token">From</Label>
           <div className="flex gap-2">
@@ -180,7 +172,7 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
         <div className="space-y-3 pt-2">
           <h4 className="text-sm font-medium">Optimal Route (Simulated)</h4>
           <div className="flex items-center justify-between text-sm p-3 rounded-lg bg-secondary/50">
-             {disabled ? <span className="text-muted-foreground">Connect wallet to see route</span> : (
+             {disabled ? <span className="text-muted-foreground">Connect wallet & configure API</span> : (
                 <div className="flex items-center gap-2 font-mono flex-wrap">
                 <span>{fromToken}</span>
                 <ChevronsRight className="w-4 h-4 text-muted-foreground" />

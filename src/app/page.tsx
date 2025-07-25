@@ -26,12 +26,22 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchData() {
-      if (isConnected && address && is1inchApiConfigured && isMoralisApiConfigured) {
+      if (isConnected && address) {
         setLoading(true);
-        const [portfolioResult, tokensResult] = await Promise.all([
-          getPortfolioAction(address),
-          getTokensAction(),
-        ]);
+        const promises = [];
+        if (isMoralisApiConfigured) {
+          promises.push(getPortfolioAction(address));
+        } else {
+          promises.push(Promise.resolve({ assets: [], raw: { error: 'Moralis API not configured.'}}));
+        }
+
+        if (is1inchApiConfigured) {
+          promises.push(getTokensAction());
+        } else {
+          promises.push(Promise.resolve({ tokens: [], raw: { error: '1inch API not configured.'}}));
+        }
+
+        const [portfolioResult, tokensResult] = await Promise.all(promises);
         
         if (portfolioResult.assets) {
             setPortfolioAssets(portfolioResult.assets);
@@ -74,11 +84,11 @@ export default function Home() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 flex flex-col gap-6">
             {!isMoralisApiConfigured && isConnected && (
-              <Alert>
+              <Alert variant="destructive">
                 <Terminal className="h-4 w-4" />
                 <AlertTitle>Moralis API Key Not Configured</AlertTitle>
                 <AlertDescription>
-                  Please add your Moralis API key to the <code>.env</code> file to see live portfolio data. Displaying empty data.
+                  Please add your Moralis API key to the <code>.env</code> file to see your portfolio. This feature is currently disabled.
                 </AlertDescription>
               </Alert>
             )}
@@ -89,7 +99,7 @@ export default function Home() {
             <TokenSwap tokens={tokens} disabled={!isConnected || loading || !is1inchApiConfigured} />
           </div>
         </div>
-        {isConnected && isMoralisApiConfigured && (
+        {isConnected && (
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                 <Card>
                     <CardHeader>

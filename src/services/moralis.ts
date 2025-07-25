@@ -1,3 +1,5 @@
+'use server';
+
 import type { Asset } from "@/lib/types";
 
 const API_BASE = "https://deep-index.moralis.io/api/v2.2";
