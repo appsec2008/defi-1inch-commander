@@ -31,13 +31,13 @@ async function fetch1inch(path: string) {
 }
 
 export async function getPortfolioAssets(): Promise<Asset[]> {
-    const data = await fetch1inch(`/portfolio/v4/portfolio/${DEFAULT_WALLET_ADDRESS}/tokens/${CHAIN_ID}`);
+    const data = await fetch1inch(`/portfolio/v4/portfolio/${CHAIN_ID}/wallets/${DEFAULT_WALLET_ADDRESS}/tokens/by-chain`);
     
     if (!data || !data.length) {
         return [];
     }
 
-    const assets: Asset[] = data.map((asset: any) => ({
+    const assets: Asset[] = data[0].tokens.map((asset: any) => ({
         id: asset.token.address,
         name: asset.token.name,
         symbol: asset.token.symbol,
