@@ -1,6 +1,6 @@
 
 export type Asset = {
-  id: string;
+  id: string | number;
   name: string;
   symbol: string;
   icon: string; // URL to the icon

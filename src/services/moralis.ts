@@ -1,3 +1,4 @@
+
 'use server';
 
 import type { Asset } from "@/lib/types";
@@ -5,6 +6,7 @@ import { getTokenPrices as getDiaTokenPrices } from './dia';
 
 const API_BASE = "https://deep-index.moralis.io/api/v2.2";
 const CHAIN_ID = "eth";
+const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'; // Wrapped ETH address for price lookups
 
 async function fetchMoralis(path: string, params?: URLSearchParams) {
   const apiKey = process.env.MORALIS_API_KEY;
@@ -38,33 +40,72 @@ async function fetchMoralis(path: string, params?: URLSearchParams) {
 }
 
 export async function getPortfolioAssets(address: string): Promise<{ assets: Asset[], raw: any, error?: string }> {
-  const balancesData = await fetchMoralis(`/${address}/erc20`, new URLSearchParams({ chain: CHAIN_ID }));
+  // Fetch both native balance and ERC20 balances in parallel
+  const [nativeBalanceData, erc20BalancesData] = await Promise.all([
+    fetchMoralis(`/${address}/balance`, new URLSearchParams({ chain: CHAIN_ID })),
+    fetchMoralis(`/${address}/erc20`, new URLSearchParams({ chain: CHAIN_ID }))
+  ]);
 
-  if (!balancesData || balancesData.error || !Array.isArray(balancesData)) {
-    return { assets: [], raw: { balances: balancesData }, error: balancesData?.error };
+  const rawResponses = {
+    nativeBalance: nativeBalanceData,
+    erc20Balances: erc20BalancesData,
+  };
+
+  if ((!nativeBalanceData || nativeBalanceData.error) && (!erc20BalancesData || erc20BalancesData.error)) {
+    return { assets: [], raw: rawResponses, error: nativeBalanceData?.error || erc20BalancesData?.error };
   }
 
-  if (balancesData.length === 0) {
-      return { assets: [], raw: { balances: [] } };
+  const assets: Asset[] = [];
+  const tokenAddressesToPrice: string[] = [];
+
+  // Process ERC20 tokens
+  if (erc20BalancesData && !erc20BalancesData.error && Array.isArray(erc20BalancesData)) {
+    erc20BalancesData.forEach((token: any) => {
+      tokenAddressesToPrice.push(token.token_address);
+    });
   }
 
-  const tokenAddresses = balancesData.map((token: any) => token.token_address);
-  const priceMap = await getDiaTokenPrices(tokenAddresses);
+  // Add WETH address to get ETH price
+  tokenAddressesToPrice.push(WETH_ADDRESS);
 
-  const assets: Asset[] = balancesData.map((asset: any) => {
-    const balance = Number(asset.balance) / (10 ** Number(asset.decimals));
-    const price = priceMap[asset.token_address] || 0;
+  const priceMap = await getDiaTokenPrices(tokenAddressesToPrice);
+  const ethPrice = priceMap[WETH_ADDRESS] || 0;
 
-    return {
-        id: asset.token_address,
-        name: asset.name,
-        symbol: asset.symbol,
-        icon: asset.logo || '', // Moralis may provide a logo
-        balance: balance,
-        price: price,
-        change24h: 0, // 24h change not available from this combination of APIs
+  // Process native ETH balance
+  if (nativeBalanceData && !nativeBalanceData.error) {
+    const ethBalance = Number(nativeBalanceData.balance) / (10 ** 18);
+    if (ethBalance > 0) {
+        assets.push({
+            id: 'eth-native',
+            name: 'Ethereum',
+            symbol: 'ETH',
+            icon: 'https://cdn.moralis.io/eth/0x.png',
+            balance: ethBalance,
+            price: ethPrice,
+            change24h: 0, // Placeholder
+        });
     }
-  });
+  }
 
-  return { assets, raw: { balances: balancesData, prices: priceMap } };
+  // Process ERC20 tokens with their prices
+  if (erc20BalancesData && !erc20BalancesData.error && Array.isArray(erc20BalancesData)) {
+    erc20BalancesData.forEach((asset: any) => {
+        const balance = Number(asset.balance) / (10 ** Number(asset.decimals));
+        const price = priceMap[asset.token_address] || 0;
+
+        assets.push({
+            id: asset.token_address,
+            name: asset.name,
+            symbol: asset.symbol,
+            icon: asset.logo || '',
+            balance: balance,
+            price: price,
+            change24h: 0, // 24h change not available from this combination of APIs
+        });
+    });
+  }
+
+  rawResponses.erc20Balances.prices = priceMap;
+
+  return { assets, raw: rawResponses };
 }
