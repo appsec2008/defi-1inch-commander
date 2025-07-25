@@ -18,6 +18,7 @@ async function fetch1inch(path: string) {
   const response = await fetch(`${API_BASE}${path}`, {
     headers: {
       Authorization: `Bearer ${apiKey}`,
+      "accept": "application/json",
     },
   });
 
@@ -30,27 +31,27 @@ async function fetch1inch(path: string) {
 }
 
 export async function getPortfolioAssets(): Promise<Asset[]> {
-    const data = await fetch1inch(`/portfolio/v4/portfolio/${CHAIN_ID}/${DEFAULT_WALLET_ADDRESS}/tokens/`);
+    const data = await fetch1inch(`/portfolio/v4/portfolio/${DEFAULT_WALLET_ADDRESS}/tokens/${CHAIN_ID}`);
     
-    if (!data || !data.portfolios || !data.portfolios.length) {
+    if (!data || !data.length) {
         return [];
     }
 
-    const assets: Asset[] = data.portfolios[0].assets.map((asset: any) => ({
-        id: asset.id,
-        name: asset.name,
-        symbol: asset.symbol,
-        icon: asset.logo_url, // API provides a URL for the icon
-        balance: asset.amount,
-        price: asset.price,
-        change24h: asset.price_24h_change || 0,
+    const assets: Asset[] = data.map((asset: any) => ({
+        id: asset.token.address,
+        name: asset.token.name,
+        symbol: asset.token.symbol,
+        icon: asset.token.logo, 
+        balance: asset.balance / (10 ** asset.token.decimals),
+        price: asset.token.price,
+        change24h: asset.token.price_24h_change_percent || 0,
     }));
 
     return assets;
 }
 
 export async function getTokens(): Promise<Token[]> {
-    const data = await fetch1inch(`/token/v1.2/${CHAIN_ID}/token-list`);
+    const data = await fetch1inch(`/token/v1.2/${CHAIN_ID}`);
     
     if (!data || !data.tokens) {
         return [];
