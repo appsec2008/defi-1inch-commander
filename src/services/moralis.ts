@@ -49,21 +49,27 @@ type MoralisPrice = {
     tokenAddress: string;
 };
 
-async function getTokenPrices(tokenAddresses: string[]): Promise<{[key: string]: MoralisPrice}> {
-  if (tokenAddresses.length === 0) return {};
+type PriceResponse = {
+    prices: {[key: string]: MoralisPrice},
+    raw: any,
+    error?: string
+}
+
+async function getTokenPrices(tokenAddresses: string[]): Promise<PriceResponse> {
+  if (tokenAddresses.length === 0) return { prices: {}, raw: null };
 
   const params = new URLSearchParams({
     chain: CHAIN_ID,
     include: 'percent_change',
   });
   
-  const response = await fetchMoralis(`/erc20/prices?${params.toString()}`, new URLSearchParams({
-    token_addresses: JSON.stringify(tokenAddresses)
-  }));
+  const response = await fetchMoralis(`/erc20/prices?${params.toString()}`, new URLSearchParams(
+    tokenAddresses.map(addr => ['token_addresses', addr])
+  ));
   
   if (!response || response.error || !Array.isArray(response)) {
     console.error("Failed to fetch prices from Moralis", response?.error);
-    return {};
+    return { prices: {}, raw: response, error: response?.error };
   }
 
   const priceMap: {[key: string]: MoralisPrice} = {};
@@ -71,11 +77,11 @@ async function getTokenPrices(tokenAddresses: string[]): Promise<{[key: string]:
     priceMap[priceInfo.tokenAddress.toLowerCase()] = priceInfo;
   });
 
-  return priceMap;
+  return { prices: priceMap, raw: response };
 }
 
 
-export async function getPortfolioAssets(address: string): Promise<{ assets: Asset[], raw: any, error?: string }> {
+export async function getPortfolioAssets(address: string): Promise<{ assets: Asset[], raw: any, rawPrices: any, error?: string }> {
   // Fetch both native balance and ERC20 balances in parallel
   const [nativeBalanceData, erc20BalancesData] = await Promise.all([
     fetchMoralis(`/${address}/balance`, new URLSearchParams({ chain: CHAIN_ID })),
@@ -85,11 +91,10 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
   const rawResponses = {
     nativeBalance: nativeBalanceData,
     erc20Balances: erc20BalancesData,
-    prices: {},
   };
 
   if ((!nativeBalanceData || nativeBalanceData.error) && (!erc20BalancesData || erc20BalancesData.error)) {
-    return { assets: [], raw: rawResponses, error: nativeBalanceData?.error || erc20BalancesData?.error };
+    return { assets: [], raw: rawResponses, rawPrices: null, error: nativeBalanceData?.error || erc20BalancesData?.error };
   }
 
   const assets: Asset[] = [];
@@ -105,8 +110,7 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
   // Add WETH to get native ETH price
   tokenAddressesToPrice.push(WETH_ADDRESS);
   
-  const priceMap = await getTokenPrices(tokenAddressesToPrice);
-  rawResponses.prices = priceMap;
+  const { prices: priceMap, raw: rawPrices } = await getTokenPrices(tokenAddressesToPrice);
 
   const ethPriceData = priceMap[WETH_ADDRESS.toLowerCase()];
   const ethPrice = ethPriceData?.usdPrice || 0;
@@ -148,5 +152,5 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
     });
   }
 
-  return { assets, raw: rawResponses };
+  return { assets, raw: rawResponses, rawPrices: rawPrices };
 }
