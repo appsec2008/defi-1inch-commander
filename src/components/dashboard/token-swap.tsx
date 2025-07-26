@@ -68,31 +68,30 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapPr
   useEffect(() => {
     if (tokens.length > 0) {
       let defaultFromSymbol: string | undefined;
-
-      // Logic to find the highest value asset
+  
       if (portfolio.length > 0) {
         const highestValueAsset = portfolio.reduce((max, asset) => {
           const assetValue = asset.balance * asset.price;
-          const maxValue = max.balance * max.price;
+          const maxValue = max ? max.balance * max.price : 0;
           return assetValue > maxValue ? asset : max;
-        });
-        defaultFromSymbol = highestValueAsset.symbol;
-      } else {
-        // Fallback if portfolio is empty
+        }, portfolio[0]);
+        
+        defaultFromSymbol = highestValueAsset?.symbol;
+      }
+      
+      if (!defaultFromSymbol) {
         defaultFromSymbol = tokens.find(t => t.symbol === 'ETH')?.symbol || tokens[0]?.symbol;
       }
       
       setFromTokenSymbol(defaultFromSymbol);
-      
-      // Smart "To" token logic
+  
       let defaultToSymbol: string | undefined;
       if (defaultFromSymbol === 'USDT') {
         defaultToSymbol = tokens.find(t => t.symbol === 'USDC')?.symbol;
       } else {
         defaultToSymbol = tokens.find(t => t.symbol === 'USDT')?.symbol;
       }
-
-      // Fallback if preferred 'To' token doesn't exist or is same as 'From'
+  
       if (!defaultToSymbol || defaultToSymbol === defaultFromSymbol) {
         defaultToSymbol = tokens.find(t => t.symbol !== defaultFromSymbol)?.symbol;
       }
@@ -357,4 +356,3 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapPr
 const Label = (props: React.ComponentProps<"label">) => (
   <label {...props} className="text-sm font-medium text-muted-foreground" />
 );
-    
