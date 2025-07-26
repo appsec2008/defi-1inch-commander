@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import type { Token } from "@/lib/types";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import type { Token, Quote } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -22,6 +22,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ArrowDown, ChevronsRight, Loader2, Repeat, Terminal } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
+import { getQuoteAction } from "@/app/actions";
+import { useDebounce } from "@/hooks/use-debounce";
 
 interface TokenSwapProps {
   tokens: Token[];
@@ -29,43 +31,65 @@ interface TokenSwapProps {
 }
 
 export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
-  const [fromToken, setFromToken] = useState<string | undefined>();
-  const [toToken, setToToken] = useState<string | undefined>();
+  const [fromTokenSymbol, setFromTokenSymbol] = useState<string | undefined>();
+  const [toTokenSymbol, setToTokenSymbol] = useState<string | undefined>();
   const [fromAmount, setFromAmount] = useState<string>("1.0");
-  const [toAmount, setToAmount] = useState<string>("");
+  
+  const [quote, setQuote] = useState<Quote | null>(null);
+  const [isFetchingQuote, setIsFetchingQuote] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+
   const [isSwapping, setIsSwapping] = useState<boolean>(false);
   const { toast } = useToast();
 
-  const fromTokenData = useMemo(() => tokens.find(t => t.symbol === fromToken), [tokens, fromToken]);
-  const toTokenData = useMemo(() => tokens.find(t => t.symbol === toToken), [tokens, toToken]);
+  const debouncedFromAmount = useDebounce(fromAmount, 500);
+
+  const fromTokenData = useMemo(() => tokens.find(t => t.symbol === fromTokenSymbol), [tokens, fromTokenSymbol]);
+  const toTokenData = useMemo(() => tokens.find(t => t.symbol === toTokenSymbol), [tokens, toTokenSymbol]);
 
   useEffect(() => {
     if (tokens.length > 0) {
-        if (!fromToken || !tokens.find(t => t.symbol === fromToken)) {
-            setFromToken(tokens.find(t => t.symbol === 'ETH')?.symbol || tokens[0]?.symbol);
+        if (!fromTokenSymbol || !tokens.find(t => t.symbol === fromTokenSymbol)) {
+            setFromTokenSymbol(tokens.find(t => t.symbol === 'ETH')?.symbol || tokens[0]?.symbol);
         }
-        if (!toToken || !tokens.find(t => t.symbol === toToken) || toToken === fromToken) {
-            setToToken(tokens.find(t => t.symbol === 'USDC' && t.symbol !== fromToken)?.symbol || tokens.find(t => t.symbol !== fromToken)?.symbol);
+        if (!toTokenSymbol || !tokens.find(t => t.symbol === toTokenSymbol) || toTokenSymbol === fromTokenSymbol) {
+            setToTokenSymbol(tokens.find(t => t.symbol === 'USDC' && t.symbol !== fromTokenSymbol)?.symbol || tokens.find(t => t.symbol !== fromTokenSymbol)?.symbol);
         }
     }
-  }, [tokens, fromToken, toToken]);
+  }, [tokens, fromTokenSymbol, toTokenSymbol]);
+
+  const fetchQuote = useCallback(async () => {
+    if (!fromTokenData || !toTokenData || !debouncedFromAmount || isNaN(parseFloat(debouncedFromAmount)) || disabled) {
+      setQuote(null);
+      return;
+    }
+
+    setIsFetchingQuote(true);
+    setQuoteError(null);
+    try {
+      const result = await getQuoteAction(fromTokenData, toTokenData, debouncedFromAmount);
+      if (result.error) {
+        setQuoteError(result.error);
+        setQuote(null);
+      } else {
+        setQuote(result.data);
+      }
+    } catch (e) {
+      setQuoteError("Failed to fetch quote.");
+      setQuote(null);
+    } finally {
+      setIsFetchingQuote(false);
+    }
+  }, [fromTokenData, toTokenData, debouncedFromAmount, disabled]);
 
   useEffect(() => {
-    if (fromAmount && !isNaN(parseFloat(fromAmount)) && fromTokenData && toTokenData) {
-      // In a real app, this is where you'd call the 1inch API for a quote
-      // For now, we'll simulate a quote based on some made up price relationship
-      const simulatedPrice = (fromTokenData.symbol.length / toTokenData.symbol.length) * 1.337;
-      const calculatedToAmount = parseFloat(fromAmount) * simulatedPrice;
-      setToAmount(calculatedToAmount.toFixed(5));
-    } else {
-      setToAmount("");
-    }
-  }, [fromAmount, fromTokenData, toTokenData]);
+    fetchQuote();
+  }, [fetchQuote]);
 
   const handleSwapTokens = () => {
-    const temp = fromToken;
-    setFromToken(toToken);
-    setToToken(temp);
+    const temp = fromTokenSymbol;
+    setFromTokenSymbol(toTokenSymbol);
+    setToTokenSymbol(temp);
   };
 
   const handleExecuteSwap = () => {
@@ -74,11 +98,13 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
     setTimeout(() => {
       setIsSwapping(false);
       toast({
-        title: "Swap Successful!",
-        description: `Swapped ${fromAmount} ${fromToken} for ${toAmount} ${toToken}.`,
+        title: "Swap Successful! (Simulated)",
+        description: `Swapped ${fromAmount} ${fromTokenSymbol} for ${quote?.toAmount} ${toTokenSymbol}.`,
       });
     }, 2000);
   };
+
+  const toAmountDisplay = isFetchingQuote ? "..." : (quote?.toAmount ? parseFloat(quote.toAmount).toFixed(5) : "");
 
   return (
     <Card>
@@ -101,7 +127,7 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
         <div className="space-y-2 relative">
           <Label htmlFor="from-token">From</Label>
           <div className="flex gap-2">
-            <Select value={fromToken} onValueChange={setFromToken} disabled={disabled}>
+            <Select value={fromTokenSymbol} onValueChange={setFromTokenSymbol} disabled={disabled}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue>
                   <div className="flex items-center gap-2">
@@ -112,7 +138,7 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
               </SelectTrigger>
               <SelectContent>
                 {tokens.map((token) => (
-                  <SelectItem key={token.symbol} value={token.symbol} disabled={token.symbol === toToken}>
+                  <SelectItem key={token.address} value={token.symbol} disabled={token.symbol === toTokenSymbol}>
                     <div className="flex items-center gap-2">
                       {token.icon && <Image src={token.icon} alt={token.name} width={20} height={20} />}
                       <span>{token.symbol}</span>
@@ -145,7 +171,7 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
         <div className="space-y-2">
           <Label htmlFor="to-token">To</Label>
           <div className="flex gap-2">
-            <Select value={toToken} onValueChange={setToToken} disabled={disabled}>
+            <Select value={toTokenSymbol} onValueChange={setToTokenSymbol} disabled={disabled}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue>
                     <div className="flex items-center gap-2">
@@ -156,7 +182,7 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
               </SelectTrigger>
               <SelectContent>
                 {tokens.map((token) => (
-                    <SelectItem key={token.symbol} value={token.symbol} disabled={token.symbol === fromToken}>
+                    <SelectItem key={token.address} value={token.symbol} disabled={token.symbol === fromTokenSymbol}>
                        <div className="flex items-center gap-2">
                         {token.icon && <Image src={token.icon} alt={token.name} width={20} height={20} />}
                         <span>{token.symbol}</span>
@@ -165,34 +191,44 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
                   ))}
               </SelectContent>
             </Select>
-            <Input id="to-token" type="number" placeholder="0.0" value={toAmount} readOnly disabled={disabled}/>
+            <Input id="to-token" type="number" placeholder="0.0" value={toAmountDisplay} readOnly disabled={disabled}/>
           </div>
         </div>
 
+        {quoteError && <Alert variant="destructive"><AlertDescription>{quoteError}</AlertDescription></Alert>}
+
         <div className="space-y-3 pt-2">
-          <h4 className="text-sm font-medium">Optimal Route (Simulated)</h4>
-          <div className="flex items-center justify-between text-sm p-3 rounded-lg bg-secondary/50">
-             {disabled ? <span className="text-muted-foreground">Connect wallet & configure API</span> : (
-                <div className="flex items-center gap-2 font-mono flex-wrap">
-                <span>{fromToken}</span>
-                <ChevronsRight className="w-4 h-4 text-muted-foreground" />
-                <span>WETH</span>
-                <ChevronsRight className="w-4 h-4 text-muted-foreground" />
-                <span>1INCH</span>
-                <ChevronsRight className="w-4 h-4 text-muted-foreground" />
-                <span>{toToken}</span>
+          <h4 className="text-sm font-medium">Optimal Route</h4>
+          <div className="flex items-center justify-between text-sm p-3 rounded-lg bg-secondary/50 min-h-[44px]">
+             {disabled ? <span className="text-muted-foreground">Connect wallet & configure API</span> : 
+              isFetchingQuote ? <Loader2 className="w-4 h-4 animate-spin" /> : 
+              quote?.route ? (
+                <div className="flex items-center gap-1.5 font-mono flex-wrap text-xs">
+                  <span>{fromTokenSymbol}</span>
+                  {quote.route.map((hop, hopIndex) => (
+                      <div key={hopIndex} className="flex items-center gap-1.5">
+                          <ChevronsRight className="w-4 h-4 text-muted-foreground" />
+                          <div className="flex items-center gap-1">
+                            {hop.map((part, partIndex) => (
+                                <span key={partIndex}>{part.name}</span>
+                            ))}
+                          </div>
+                      </div>
+                  ))}
                 </div>
-            )}
-            {!disabled && <span className="text-accent font-semibold">100%</span>}
+            ) : <span className="text-muted-foreground text-xs">Enter an amount to see route</span>}
+            {!disabled && !isFetchingQuote && quote && <span className="text-accent font-semibold">100%</span>}
           </div>
            <div className="text-xs text-muted-foreground space-y-1">
              <div className="flex justify-between">
                 <span>Price:</span>
-                <span className="font-mono">1 {fromToken} = {toAmount && fromAmount && !disabled ? (parseFloat(toAmount)/parseFloat(fromAmount)).toFixed(4) : '...'} {toToken}</span>
+                <span className="font-mono">
+                    {isFetchingQuote ? '...' : quote && fromAmount ? `1 ${fromTokenSymbol} = ${(parseFloat(toAmountDisplay)/parseFloat(fromAmount)).toFixed(4)} ${toTokenSymbol}` : 'N/A'}
+                </span>
              </div>
              <div className="flex justify-between">
-                <span>Gas Fee:</span>
-                <span className="font-mono">{disabled ? '...' :`~$5.42 (Simulated)`}</span>
+                <span>Gas Fee (est.):</span>
+                <span className="font-mono">{isFetchingQuote ? '...' : quote?.gas ? `~${quote.gas} units` : 'N/A'}</span>
              </div>
            </div>
         </div>
@@ -202,9 +238,9 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
           size="lg"
           className="w-full font-bold"
           onClick={handleExecuteSwap}
-          disabled={isSwapping || !fromAmount || !toAmount || disabled}
+          disabled={isSwapping || isFetchingQuote || !quote || !fromAmount || disabled}
         >
-          {isSwapping ? <Loader2 className="animate-spin" /> : "Swap"}
+          {isSwapping ? <Loader2 className="animate-spin" /> : isFetchingQuote ? <><Loader2 className="mr-2 animate-spin" />Fetching Quote...</> : "Swap (Simulated)"}
         </Button>
       </CardContent>
     </Card>

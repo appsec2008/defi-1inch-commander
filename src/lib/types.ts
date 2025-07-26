@@ -12,5 +12,13 @@ export type Asset = {
 export type Token = {
   symbol: string;
   name:string;
+  address: string;
+  decimals: number;
   icon: string; // URL to the icon
 };
+
+export type Quote = {
+    toAmount: string;
+    gas: string;
+    route: { name: string }[][];
+}

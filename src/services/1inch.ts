@@ -1,6 +1,6 @@
 'use server';
 
-import type { Token } from "@/lib/types";
+import type { Quote, Token } from "@/lib/types";
 
 const API_BASE = "https://api.1inch.dev";
 const CHAIN_ID = "1"; // Ethereum Mainnet
@@ -44,11 +44,31 @@ export async function getTokens(): Promise<{ tokens: Token[], raw: any, error?: 
     const tokenList: Token[] = Object.values(data).slice(0, 100).map((token: any) => ({
       symbol: token.symbol,
       name: token.name,
+      address: token.address,
+      decimals: token.decimals,
       icon: token.logoURI
     }));
 
     return { tokens: tokenList, raw: data };
 }
+
+export async function getQuote(fromTokenAddress: string, toTokenAddress: string, amount: string): Promise<{ quote: Quote | null, raw: any, error?: string }> {
+    const path = `/swap/v6.0/${CHAIN_ID}/quote?src=${fromTokenAddress}&dst=${toTokenAddress}&amount=${amount}`;
+    const data = await fetch1inch(path);
+
+    if (!data || data.error) {
+        return { quote: null, raw: data, error: data?.error || data?.description };
+    }
+    
+    const quote: Quote = {
+        toAmount: data.dstAmount,
+        gas: data.gas,
+        route: data.route,
+    };
+    
+    return { quote, raw: data };
+}
+
 
 export async function getPortfolio(address: string) {
     return fetch1inch(`/portfolio/v1.0/1/wallets/${address}`);
