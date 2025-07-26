@@ -82,23 +82,23 @@ export async function getTokensAction() {
 
 export async function getQuoteAction(fromToken: { address: string, decimals: number }, toToken: { address: string, decimals: number }, fromAmount: string) {
     if (!fromAmount || isNaN(parseFloat(fromAmount)) || parseFloat(fromAmount) <= 0) {
-        return { data: null, error: "Invalid amount" };
+        return { data: null, error: "Invalid amount", raw: {} };
     }
     try {
         const amountInSmallestUnit = parseUnits(fromAmount, fromToken.decimals);
-        const { quote, error } = await getQuote(fromToken.address, toToken.address, amountInSmallestUnit.toString());
+        const { quote, raw, error } = await getQuote(fromToken.address, toToken.address, amountInSmallestUnit.toString());
 
         if (error) {
-            return { data: null, error };
+            return { data: null, error, raw };
         }
         
         if (quote && quote.toAmount) {
             const toAmountFormatted = formatUnits(BigInt(quote.toAmount), toToken.decimals);
-            return { data: { ...quote, toAmount: toAmountFormatted } };
+            return { data: { ...quote, toAmount: toAmountFormatted }, raw, error: null };
         }
-        return { data: null, error: 'Failed to get quote.' };
+        return { data: null, error: 'Failed to get quote.', raw };
     } catch (e: any) {
         console.error("Quote Action Error:", e);
-        return { data: null, error: e.message || 'An unexpected error occurred.' };
+        return { data: null, error: e.message || 'An unexpected error occurred.', raw: {} };
     }
 }
