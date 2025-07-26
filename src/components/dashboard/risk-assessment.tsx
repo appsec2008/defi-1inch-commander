@@ -24,6 +24,16 @@ type AnalysisResult = {
   recommendations: string;
 } | null;
 
+// A simple markdown renderer
+const renderMarkdown = (text: string) => {
+    // Replace **text** with <strong>text</strong>
+    let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    // Replace newlines with <br />
+    formattedText = formattedText.replace(/\n/g, '<br />');
+    return { __html: formattedText };
+}
+
+
 export function RiskAssessment({ portfolio = [], disabled }: RiskAssessmentProps) {
   const { address } = useAccount();
   const [isLoading, setIsLoading] = useState(false);
@@ -107,7 +117,7 @@ export function RiskAssessment({ portfolio = [], disabled }: RiskAssessmentProps
                 <CardTitle>Risk Summary</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">{result.riskSummary}</p>
+                <p className="text-muted-foreground" dangerouslySetInnerHTML={renderMarkdown(result.riskSummary)} />
               </CardContent>
             </Card>
 
@@ -117,7 +127,7 @@ export function RiskAssessment({ portfolio = [], disabled }: RiskAssessmentProps
                 <CardTitle>Recommendations</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">{result.recommendations}</p>
+                <p className="text-muted-foreground" dangerouslySetInnerHTML={renderMarkdown(result.recommendations)} />
               </CardContent>
             </Card>
             
