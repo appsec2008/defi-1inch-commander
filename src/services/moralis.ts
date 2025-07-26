@@ -48,12 +48,11 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
     fetchMoralis(`/${address}/erc20?chain=${CHAIN_ID}`)
   ]);
 
-  const rawResponses = {
-    nativeBalance: nativeBalanceData,
-    erc20Balances: erc20BalancesData,
-  };
-
   if ((!nativeBalanceData || nativeBalanceData.error) && (!erc20BalancesData || erc20BalancesData.error)) {
+    const rawResponses = {
+        portfolio: { nativeBalance: nativeBalanceData, erc20Balances: erc20BalancesData },
+        spotPrices: {}
+    }
     return { assets: [], raw: rawResponses, error: nativeBalanceData?.error || erc20BalancesData?.error };
   }
 
@@ -73,7 +72,14 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
   tokenAddressesToPrice.push(WETH_ADDRESS);
   
   const { prices: priceMap, raw: rawPrices } = await getSpotPrices(tokenAddressesToPrice);
-  rawResponses.erc20Balances.spotPrices = rawPrices; // Nest the prices response
+
+  const rawResponses = {
+    portfolio: {
+      nativeBalance: nativeBalanceData,
+      erc20Balances: erc20BalancesData,
+    },
+    spotPrices: rawPrices,
+  };
 
   const ethPrice = priceMap[WETH_ADDRESS.toLowerCase()] || 0;
 

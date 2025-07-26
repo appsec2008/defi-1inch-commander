@@ -19,6 +19,7 @@ export default function Home() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiResponses, setApiResponses] = useState({ portfolio: {}, tokens: {} });
+  const [apiSpotPriceResponse, setApiSpotPriceResponse] = useState({});
 
   // These checks are for UI feedback only. The actual API calls use server-side keys.
   const is1inchApiConfigured = !!process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
@@ -54,15 +55,18 @@ export default function Home() {
         }
         
         setApiResponses({ 
-            portfolio: portfolioResult.raw || {}, 
+            portfolio: portfolioResult.raw?.portfolio || {}, 
             tokens: tokensResult.raw || {},
         });
+        setApiSpotPriceResponse(portfolioResult.raw?.spotPrices || {});
+
         setLoading(false);
       } else {
         setLoading(false);
         setPortfolioAssets([]);
         setTokens([]);
         setApiResponses({ portfolio: {}, tokens: {} });
+        setApiSpotPriceResponse({});
       }
     }
     fetchData();
@@ -106,16 +110,29 @@ export default function Home() {
           </div>
         </div>
         {isConnected && (
-            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
                 <Card>
                     <CardHeader>
                         <CardTitle>Portfolio API Response</CardTitle>
-                        <CardDescription>Raw JSON data from the Moralis (Balances) and 1inch (Prices) APIs.</CardDescription>
+                        <CardDescription>Raw JSON data from the Moralis Balances API.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <ScrollArea className="h-[400px] w-full bg-secondary/50 rounded-md p-4">
                             <pre className="text-xs text-muted-foreground">
                                 {JSON.stringify(apiResponses.portfolio, null, 2)}
+                            </pre>
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader>
+                        <CardTitle>Spot Price API Response</CardTitle>
+                        <CardDescription>Raw JSON data from the 1inch Spot Price API.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ScrollArea className="h-[400px] w-full bg-secondary/50 rounded-md p-4">
+                            <pre className="text-xs text-muted-foreground">
+                                {JSON.stringify(apiSpotPriceResponse, null, 2)}
                             </pre>
                         </ScrollArea>
                     </CardContent>
