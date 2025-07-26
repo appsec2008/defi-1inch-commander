@@ -24,6 +24,7 @@ export async function handleComprehensiveRiskAnalysis(address: string) {
             liquiditySources,
             presets,
             health,
+            moralisPortfolioResult,
         ] = await Promise.all([
             getPortfolio(address),
             getHistory(address),
@@ -31,6 +32,7 @@ export async function handleComprehensiveRiskAnalysis(address: string) {
             getLiquiditySources(),
             getPresets(),
             getHealthCheck(),
+            getMoralisPortfolio(address), // Fetch portfolio to identify top assets
         ]);
 
         const context = {
@@ -42,12 +44,29 @@ export async function handleComprehensiveRiskAnalysis(address: string) {
             health,
         };
 
-        const analysisResult = await analyzePortfolioRisk({ portfolioData: JSON.stringify(context, null, 2) });
+        // Identify top 5 token holdings by value
+        const topHoldings = moralisPortfolioResult.assets
+            .sort((a, b) => (b.balance * b.price) - (a.balance * a.price))
+            .slice(0, 5)
+            .map(asset => ({
+                name: asset.name,
+                symbol: asset.symbol,
+                balance: asset.balance,
+                price: asset.price,
+                value: asset.balance * asset.price,
+            }));
+
+        const analysisInput = {
+             portfolioData: JSON.stringify(context, null, 2),
+             topTokenHoldings: JSON.stringify(topHoldings, null, 2),
+        };
+
+        const analysisResult = await analyzePortfolioRisk(analysisInput);
         return { data: analysisResult };
 
     } catch (error) {
         console.error('Error during comprehensive risk analysis:', error);
-        return { error: 'Failed to fetch comprehensive data from 1inch. Please try again later.' };
+        return { error: 'Failed to fetch comprehensive data. Please try again later.' };
     }
 }
 
