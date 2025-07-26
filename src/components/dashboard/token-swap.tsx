@@ -33,6 +33,7 @@ import { ArrowDown, ChevronsRight, Loader2, Repeat, Terminal } from "lucide-reac
 import Image from "next/image";
 import { getQuoteAction } from "@/app/actions";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useAccount } from "wagmi";
 
 interface TokenSwapProps {
   tokens: Token[];
@@ -49,6 +50,7 @@ type SwapSuccessDetails = {
 }
 
 export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapProps) {
+  const { isConnected } = useAccount();
   const [fromTokenSymbol, setFromTokenSymbol] = useState<string | undefined>();
   const [toTokenSymbol, setToTokenSymbol] = useState<string | undefined>();
   const [fromAmount, setFromAmount] = useState<string>("1.0");
@@ -65,6 +67,8 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapPr
 
   const fromTokenData = useMemo(() => tokens.find(t => t.symbol === fromTokenSymbol), [tokens, fromTokenSymbol]);
   const toTokenData = useMemo(() => tokens.find(t => t.symbol === toTokenSymbol), [tokens, toTokenSymbol]);
+  
+  const is1inchApiConfigured = !!process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
 
   useEffect(() => {
     if (tokens.length > 0) {
@@ -174,7 +178,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapPr
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {disabled && (
+        {isConnected && !is1inchApiConfigured && (
            <Alert variant="destructive">
             <Terminal className="h-4 w-4" />
             <AlertTitle>1inch API Not Configured</AlertTitle>
