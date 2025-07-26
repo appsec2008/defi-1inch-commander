@@ -73,6 +73,7 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
   tokenAddressesToPrice.push(WETH_ADDRESS);
   
   const { prices: priceMap, raw: rawPrices } = await getSpotPrices(tokenAddressesToPrice);
+  rawResponses.erc20Balances.spotPrices = rawPrices; // Nest the prices response
 
   const ethPrice = priceMap[WETH_ADDRESS.toLowerCase()] || 0;
 
@@ -112,9 +113,6 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
 
   // Filter out assets with zero value unless they are the only asset
   const valuableAssets = assets.filter(asset => asset.balance * asset.price > 0.01);
-
-  // Note: rawPrices from 1inch is now included in the main `raw` object for simplicity
-  rawResponses.erc20Balances.spotPrices = rawPrices;
 
   return { assets: valuableAssets.length > 0 ? valuableAssets : assets, raw: rawResponses };
 }
