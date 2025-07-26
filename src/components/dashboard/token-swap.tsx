@@ -19,8 +19,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+  } from "@/components/ui/alert-dialog"
 import { ArrowDown, ChevronsRight, Loader2, Repeat, Terminal } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { getQuoteAction } from "@/app/actions";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -28,6 +36,14 @@ import { useDebounce } from "@/hooks/use-debounce";
 interface TokenSwapProps {
   tokens: Token[];
   disabled: boolean;
+}
+
+type SwapSuccessDetails = {
+    quote: Quote;
+    fromToken: Token;
+    toToken: Token;
+    fromAmount: string;
+    txHash: string;
 }
 
 export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
@@ -40,7 +56,8 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
   const [quoteError, setQuoteError] = useState<string | null>(null);
 
   const [isSwapping, setIsSwapping] = useState<boolean>(false);
-  const { toast } = useToast();
+  const [isSwapSuccessDialogOpen, setIsSwapSuccessDialogOpen] = useState(false);
+  const [swapSuccessDetails, setSwapSuccessDetails] = useState<SwapSuccessDetails | null>(null);
 
   const debouncedFromAmount = useDebounce(fromAmount, 500);
 
@@ -93,20 +110,27 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
   };
 
   const handleExecuteSwap = () => {
+    if (!quote || !fromTokenData || !toTokenData || !fromAmount) return;
     setIsSwapping(true);
     // Simulate API call for swap
     setTimeout(() => {
       setIsSwapping(false);
-      toast({
-        title: "Swap Successful! (Simulated)",
-        description: `Swapped ${fromAmount} ${fromTokenSymbol} for ${quote?.toAmount} ${toTokenSymbol}.`,
+      const simulatedTxHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+      setSwapSuccessDetails({
+          quote,
+          fromToken: fromTokenData,
+          toToken: toTokenData,
+          fromAmount,
+          txHash: simulatedTxHash
       });
-    }, 2000);
+      setIsSwapSuccessDialogOpen(true);
+    }, 1500);
   };
 
   const toAmountDisplay = isFetchingQuote ? "..." : (quote?.toAmount ? parseFloat(quote.toAmount).toFixed(5) : "");
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="font-headline">Token Swap</CardTitle>
@@ -223,7 +247,7 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
              <div className="flex justify-between">
                 <span>Price:</span>
                 <span className="font-mono">
-                    {isFetchingQuote ? '...' : quote && fromAmount ? `1 ${fromTokenSymbol} = ${(parseFloat(toAmountDisplay)/parseFloat(fromAmount)).toFixed(4)} ${toTokenSymbol}` : 'N/A'}
+                    {isFetchingQuote ? '...' : quote && fromAmount && parseFloat(fromAmount) > 0 ? `1 ${fromTokenSymbol} = ${(parseFloat(toAmountDisplay)/parseFloat(fromAmount)).toFixed(4)} ${toTokenSymbol}` : 'N/A'}
                 </span>
              </div>
              <div className="flex justify-between">
@@ -240,13 +264,70 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
           onClick={handleExecuteSwap}
           disabled={isSwapping || isFetchingQuote || !quote || !fromAmount || disabled}
         >
-          {isSwapping ? <Loader2 className="animate-spin" /> : isFetchingQuote ? <><Loader2 className="mr-2 animate-spin" />Fetching Quote...</> : "Swap (Simulated)"}
+          {isSwapping ? <><Loader2 className="animate-spin mr-2" />Swapping...</> : isFetchingQuote ? <><Loader2 className="mr-2 animate-spin" />Fetching Quote...</> : "Swap (Simulated)"}
         </Button>
       </CardContent>
     </Card>
+
+    {swapSuccessDetails && (
+        <AlertDialog open={isSwapSuccessDialogOpen} onOpenChange={setIsSwapSuccessDialogOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                <AlertDialogTitle>Swap Successful (Simulated)</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Your simulated token swap was executed successfully. Here are the details.
+                </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="text-sm space-y-4">
+                    <div className="flex justify-between items-center bg-secondary/50 p-3 rounded-md">
+                        <span className="text-muted-foreground">From</span>
+                        <span className="font-bold text-lg">{swapSuccessDetails.fromAmount} {swapSuccessDetails.fromToken.symbol}</span>
+                    </div>
+                    <div className="flex justify-center -my-3 z-10 relative">
+                        <ArrowDown className="w-6 h-6 text-muted-foreground bg-background p-1 rounded-full border" />
+                    </div>
+                    <div className="flex justify-between items-center bg-secondary/50 p-3 rounded-md">
+                        <span className="text-muted-foreground">To</span>
+                        <span className="font-bold text-lg text-accent">{parseFloat(swapSuccessDetails.quote.toAmount).toFixed(5)} {swapSuccessDetails.toToken.symbol}</span>
+                    </div>
+                    <div className="space-y-2 text-xs border-t pt-4">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Transaction Hash:</span>
+                            <span className="font-mono truncate max-w-[180px]">{swapSuccessDetails.txHash}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Est. Gas Fee:</span>
+                            <span className="font-mono">~{swapSuccessDetails.quote.gas} units</span>
+                        </div>
+                        <div className="flex justify-between items-start">
+                            <span className="text-muted-foreground pt-0.5">Route:</span>
+                            <div className="flex items-center gap-1.5 font-mono flex-wrap text-right max-w-[240px] justify-end">
+                                <span>{swapSuccessDetails.fromToken.symbol}</span>
+                                {swapSuccessDetails.quote.route.map((hop, hopIndex) => (
+                                    <div key={hopIndex} className="flex items-center gap-1.5">
+                                        <ChevronsRight className="w-4 h-4 text-muted-foreground" />
+                                        <div className="flex items-center gap-1">
+                                        {hop.map((part, partIndex) => (
+                                            <span key={partIndex}>{part.name}</span>
+                                        ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <AlertDialogFooter>
+                <AlertDialogAction onClick={() => setIsSwapSuccessDialogOpen(false)}>Close</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    )}
+    </>
   );
 }
 
 const Label = (props: React.ComponentProps<"label">) => (
   <label {...props} className="text-sm font-medium text-muted-foreground" />
 );
+    
