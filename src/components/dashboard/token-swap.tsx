@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -70,21 +71,28 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapPr
       let defaultFromSymbol: string | undefined;
   
       if (portfolio.length > 0) {
-        const highestValueAsset = portfolio.reduce((max, asset) => {
-          const assetValue = asset.balance * asset.price;
-          const maxValue = max ? max.balance * max.price : 0;
-          return assetValue > maxValue ? asset : max;
-        }, portfolio[0]);
+        // Sort portfolio by value to find the highest value assets
+        const sortedPortfolio = [...portfolio].sort((a, b) => (b.balance * b.price) - (a.balance * a.price));
+        
+        let highestValueAsset = sortedPortfolio[0];
+
+        // If the highest value asset is native ETH and there's another asset,
+        // default to the second highest value asset (top ERC20)
+        if (highestValueAsset?.id === 'eth-native' && sortedPortfolio.length > 1) {
+          highestValueAsset = sortedPortfolio[1];
+        }
         
         defaultFromSymbol = highestValueAsset?.symbol;
       }
       
+      // Fallback if no suitable portfolio asset is found
       if (!defaultFromSymbol) {
         defaultFromSymbol = tokens.find(t => t.symbol === 'ETH')?.symbol || tokens[0]?.symbol;
       }
       
       setFromTokenSymbol(defaultFromSymbol);
   
+      // Set the "To" token based on the "From" token
       let defaultToSymbol: string | undefined;
       if (defaultFromSymbol === 'USDT') {
         defaultToSymbol = tokens.find(t => t.symbol === 'USDC')?.symbol;
@@ -92,6 +100,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapPr
         defaultToSymbol = tokens.find(t => t.symbol === 'USDT')?.symbol;
       }
   
+      // Ensure "To" token is not the same as "From" and exists
       if (!defaultToSymbol || defaultToSymbol === defaultFromSymbol) {
         defaultToSymbol = tokens.find(t => t.symbol !== defaultFromSymbol)?.symbol;
       }
@@ -329,7 +338,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapPr
                             <span className="text-muted-foreground pt-0.5">Route:</span>
                             <div className="flex items-center gap-1.5 font-mono flex-wrap text-right max-w-[240px] justify-end">
                                 <span>{swapSuccessDetails.fromToken.symbol}</span>
-                                {swapSuccessDetails.quote.route && swapSuccessDetails.quote.route.map((hop, hopIndex) => (
+                                {swapSuccessDetails.quote && swapSuccessDetails.quote.route && swapSuccessDetails.quote.route.map((hop, hopIndex) => (
                                     <div key={hopIndex} className="flex items-center gap-1.5">
                                         <ChevronsRight className="w-4 h-4 text-muted-foreground" />
                                         <div className="flex items-center gap-1">
@@ -356,3 +365,4 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapPr
 const Label = (props: React.ComponentProps<"label">) => (
   <label {...props} className="text-sm font-medium text-muted-foreground" />
 );
+
