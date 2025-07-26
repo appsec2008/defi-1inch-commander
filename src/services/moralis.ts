@@ -60,7 +60,8 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
   ]);
 
   const rawResponses = {
-    portfolio: { nativeBalance: nativeBalanceResult, erc20Balances: erc20BalancesResult },
+    nativeBalance: nativeBalanceResult,
+    erc20Balances: erc20BalancesResult,
     spotPrices: {}
   };
   

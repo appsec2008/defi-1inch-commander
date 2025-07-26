@@ -19,7 +19,7 @@ export default function Home() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiTokensResponse, setApiTokensResponse] = useState({});
-  const [apiSpotPriceResponse, setApiSpotPriceResponse] = useState({});
+  const [apiPortfolioResponse, setApiPortfolioResponse] = useState({});
   const [apiQuoteResponse, setApiQuoteResponse] = useState({});
 
 
@@ -41,7 +41,7 @@ export default function Home() {
           promises.push(getPortfolioAction(address));
         } else {
           console.log("Moralis API not configured for UI. Skipping portfolio fetch.");
-          promises.push(Promise.resolve({ assets: [], raw: { portfolio: { error: 'Moralis API not configured.'}, spotPrices: { error: 'Moralis API not configured.'} } }));
+          promises.push(Promise.resolve({ assets: [], raw: {} }));
         }
 
         if (is1inchApiConfigured) {
@@ -61,7 +61,7 @@ export default function Home() {
         }
         
         setApiTokensResponse(tokensResult.raw || {});
-        setApiSpotPriceResponse(portfolioResult.raw?.spotPrices || {});
+        setApiPortfolioResponse(portfolioResult.raw || {});
 
         setLoading(false);
       } else {
@@ -69,7 +69,7 @@ export default function Home() {
         setPortfolioAssets([]);
         setTokens([]);
         setApiTokensResponse({});
-        setApiSpotPriceResponse({});
+        setApiPortfolioResponse({});
         setApiQuoteResponse({});
       }
     }
@@ -142,14 +142,14 @@ export default function Home() {
         {isConnected && (
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
                 {renderApiResponseCard(
+                    "Moralis Wallet API",
+                    "Fetches native and ERC20 token balances.",
+                    apiPortfolioResponse
+                )}
+                {renderApiResponseCard(
                     "1inch Tokens API",
                     "Fetches a list of all swappable tokens.",
                     apiTokensResponse
-                )}
-                {renderApiResponseCard(
-                    "1inch Spot Price API",
-                    "Fetches current prices for portfolio tokens.",
-                    apiSpotPriceResponse
                 )}
                 {renderApiResponseCard(
                     "1inch Quote API",

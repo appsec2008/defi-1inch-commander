@@ -130,7 +130,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
       if (result.error) {
         setQuoteError(result.error);
         setQuote(null);
-      } else {
+      } else if (result.data) {
         setQuote(result.data);
       }
     } catch (e) {
@@ -373,5 +373,3 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
 const Label = (props: React.ComponentProps<"label">) => (
   <label {...props} className="text-sm font-medium text-muted-foreground" />
 );
-
-
