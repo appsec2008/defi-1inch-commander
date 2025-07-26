@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from 'next/image';
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,19 +31,15 @@ export function PortfolioOverview({ assets = [], loading, isMoralisApiConfigured
     (acc, asset) => acc + asset.balance * asset.price,
     0
   );
-  const totalChange24hValue = assets.reduce(
-    (acc, asset) => acc + (asset.balance * asset.price * (asset.change24h / 100)),
-    0
-  );
-
-  const previousTotalValue = totalValue - totalChange24hValue;
-  const totalChangePercent = previousTotalValue !== 0 ? (totalChange24hValue / previousTotalValue) * 100 : 0;
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
     }).format(value);
+
+  // Since 1inch spot price doesn't provide 24h change, we will hide this section for now.
+  const has24hChangeData = assets.some(asset => asset.change24h !== 0 && asset.change24h !== undefined);
 
   return (
     <Card>
@@ -57,25 +53,20 @@ export function PortfolioOverview({ assets = [], loading, isMoralisApiConfigured
               </CardTitle>
             )}
           </div>
-           {loading ? <Skeleton className="h-10 w-36 mt-2 sm:mt-0" /> : (
+           {loading ? <Skeleton className="h-10 w-36 mt-2 sm:mt-0" /> : has24hChangeData ? (
               <div className="text-right mt-2 sm:mt-0">
                 <div
                   className={cn(
                     "flex items-center justify-end gap-1 text-lg font-semibold",
-                    totalChange24hValue >= 0 ? "text-green-400" : "text-red-400"
+                    "text-gray-500" // Placeholder color
                   )}
                 >
-                  {totalChange24hValue >= 0 ? (
-                    <ArrowUp className="h-5 w-5" />
-                  ) : (
-                    <ArrowDown className="h-5 w-5" />
-                  )}
-                  {formatCurrency(Math.abs(totalChange24hValue))} (
-                  {totalChangePercent.toFixed(2)}%)
+                  <Minus className="h-5 w-5" />
+                  N/A
                 </div>
                 <p className="text-sm text-muted-foreground">Last 24 hours</p>
               </div>
-           )}
+           ) : null}
         </div>
       </CardHeader>
       <CardContent>
@@ -86,7 +77,6 @@ export function PortfolioOverview({ assets = [], loading, isMoralisApiConfigured
               <TableHead className="text-right">Balance</TableHead>
               <TableHead className="text-right">Price</TableHead>
               <TableHead className="text-right">Value</TableHead>
-              <TableHead className="text-right">24h Change</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -97,7 +87,6 @@ export function PortfolioOverview({ assets = [], loading, isMoralisApiConfigured
                         <TableCell className="text-right"><Skeleton className="h-6 w-20 ml-auto" /></TableCell>
                         <TableCell className="text-right"><Skeleton className="h-6 w-20 ml-auto" /></TableCell>
                         <TableCell className="text-right"><Skeleton className="h-6 w-24 ml-auto" /></TableCell>
-                        <TableCell className="text-right"><Skeleton className="h-6 w-16 ml-auto" /></TableCell>
                     </TableRow>
                 ))
             ) : assets.length > 0 ? (
@@ -129,19 +118,11 @@ export function PortfolioOverview({ assets = [], loading, isMoralisApiConfigured
                   <TableCell className="text-right font-mono">
                     {formatCurrency(asset.balance * asset.price)}
                   </TableCell>
-                  <TableCell
-                    className={cn(
-                      "text-right font-mono",
-                      asset.change24h >= 0 ? "text-green-400" : "text-red-400"
-                    )}
-                  >
-                    {asset.change24h.toFixed(2)}%
-                  </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="text-center h-24">
+                <TableCell colSpan={4} className="text-center h-24">
                   {!isMoralisApiConfigured ? 'Moralis API Key not configured.' : 'No assets found.'}
                 </TableCell>
               </TableRow>

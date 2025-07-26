@@ -5,7 +5,7 @@ import type { Quote, Token } from "@/lib/types";
 const API_BASE = "https://api.1inch.dev";
 const CHAIN_ID = "1"; // Ethereum Mainnet
 
-async function fetch1inch(path: string) {
+async function fetch1inch(path: string, options: RequestInit = {}) {
   const apiKey = process.env.NEXT_PUBLIC_ONE_INCH_API_KEY;
   if (!apiKey || apiKey === 'YOUR_1INCH_API_KEY_HERE') {
     console.error("1inch API key is not set. Please add it to your .env file.");
@@ -14,9 +14,11 @@ async function fetch1inch(path: string) {
 
   try {
     const response = await fetch(`${API_BASE}${path}`, {
+      ...options,
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "accept": "application/json",
+        ...options.headers,
       },
       cache: 'no-store'
     });
@@ -67,6 +69,24 @@ export async function getQuote(fromTokenAddress: string, toTokenAddress: string,
     };
     
     return { quote, raw: data };
+}
+
+export async function getSpotPrices(tokenAddresses: string[]): Promise<{ prices: {[key: string]: number}, raw: any, error?: string }> {
+    const addressesString = tokenAddresses.join(',');
+    const path = `/price/v1.1/${CHAIN_ID}/spot/tokens/${addressesString}`;
+    const data = await fetch1inch(path);
+  
+    if (!data || data.error) {
+      return { prices: {}, raw: data, error: data?.error || 'Failed to fetch spot prices.' };
+    }
+  
+    // The response is an object with token addresses as keys and their USD prices as values.
+    const prices: {[key: string]: number} = {};
+    for (const address in data) {
+        prices[address.toLowerCase()] = parseFloat(data[address]);
+    }
+  
+    return { prices, raw: data };
 }
 
 
