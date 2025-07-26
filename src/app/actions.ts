@@ -92,7 +92,7 @@ export async function getQuoteAction(fromToken: { address: string, decimals: num
             return { data: null, error };
         }
         
-        if (quote) {
+        if (quote && quote.toAmount) {
             const toAmountFormatted = formatUnits(BigInt(quote.toAmount), toToken.decimals);
             return { data: { ...quote, toAmount: toAmountFormatted } };
         }
