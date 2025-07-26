@@ -72,16 +72,11 @@ export async function getQuote(fromTokenAddress: string, toTokenAddress: string,
 }
 
 export async function getSpotPrices(tokenAddresses: string[]): Promise<{ prices: {[key: string]: number}, raw: any, error?: string }> {
-    const path = `/price/v1.1/${CHAIN_ID}/${tokenAddresses.join(',')}`;
+    const addressesString = tokenAddresses.join(',');
+    const path = `/price/v1.1/${CHAIN_ID}/${addressesString}?currency=USD`;
+    
     const data = await fetch1inch(path, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            "tokens": tokenAddresses,
-            "currency": "USD"
-        })
+        method: 'GET',
     });
   
     if (!data || data.error) {
