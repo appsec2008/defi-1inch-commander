@@ -39,6 +39,7 @@ interface TokenSwapProps {
   tokens: Token[];
   portfolio: Asset[];
   disabled: boolean;
+  onQuoteResponse: (response: any) => void;
 }
 
 type SwapSuccessDetails = {
@@ -49,7 +50,7 @@ type SwapSuccessDetails = {
     txHash: string;
 }
 
-export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapProps) {
+export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteResponse }: TokenSwapProps) {
   const { isConnected } = useAccount();
   const [fromTokenSymbol, setFromTokenSymbol] = useState<string | undefined>();
   const [toTokenSymbol, setToTokenSymbol] = useState<string | undefined>();
@@ -117,6 +118,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapPr
   const fetchQuote = useCallback(async () => {
     if (!fromTokenData || !toTokenData || !debouncedFromAmount || isNaN(parseFloat(debouncedFromAmount)) || disabled) {
       setQuote(null);
+      onQuoteResponse(null);
       return;
     }
 
@@ -124,6 +126,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapPr
     setQuoteError(null);
     try {
       const result = await getQuoteAction(fromTokenData, toTokenData, debouncedFromAmount);
+      onQuoteResponse(result.raw); // Pass raw response to parent
       if (result.error) {
         setQuoteError(result.error);
         setQuote(null);
@@ -133,10 +136,11 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapPr
     } catch (e) {
       setQuoteError("Failed to fetch quote.");
       setQuote(null);
+      onQuoteResponse({ error: "Failed to fetch quote." });
     } finally {
       setIsFetchingQuote(false);
     }
-  }, [fromTokenData, toTokenData, debouncedFromAmount, disabled]);
+  }, [fromTokenData, toTokenData, debouncedFromAmount, disabled, onQuoteResponse]);
 
   useEffect(() => {
     fetchQuote();

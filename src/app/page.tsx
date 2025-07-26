@@ -10,7 +10,7 @@ import { Terminal, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAccount } from "wagmi";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import type { Asset, Token } from "@/lib/types";
 
 export default function Home() {
@@ -20,10 +20,16 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [apiResponses, setApiResponses] = useState({ portfolio: {}, tokens: {} });
   const [apiSpotPriceResponse, setApiSpotPriceResponse] = useState({});
+  const [apiQuoteResponse, setApiQuoteResponse] = useState({});
+
 
   // These checks are for UI feedback only. The actual API calls use server-side keys.
   const is1inchApiConfigured = !!process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
   const isMoralisApiConfigured = process.env.NEXT_PUBLIC_MORALIS_API_KEY_IS_CONFIGURED === 'true';
+  
+  const handleQuoteResponse = useCallback((response: any) => {
+    setApiQuoteResponse(response || {});
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -67,10 +73,32 @@ export default function Home() {
         setTokens([]);
         setApiResponses({ portfolio: {}, tokens: {} });
         setApiSpotPriceResponse({});
+        setApiQuoteResponse({});
       }
     }
     fetchData();
   }, [isConnected, address, is1inchApiConfigured, isMoralisApiConfigured]);
+
+  const renderApiResponseCard = (title: string, description: string, data: any) => (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <h4 className="text-sm font-semibold mb-2">Request</h4>
+        <pre className="text-xs text-muted-foreground bg-secondary/50 rounded-md p-2 mb-4 break-all">
+          {data?.request ? `${data.request.method} ${data.request.url}` : 'N/A'}
+        </pre>
+        <h4 className="text-sm font-semibold mb-2">Response</h4>
+        <ScrollArea className="h-[300px] w-full bg-secondary/50 rounded-md p-4">
+          <pre className="text-xs text-muted-foreground">
+            {JSON.stringify(data?.response || data || {}, null, 2)}
+          </pre>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -106,50 +134,36 @@ export default function Home() {
             <RiskAssessment portfolio={portfolioAssets} disabled={!isConnected || loading || !isMoralisApiConfigured} />
           </div>
           <div className="lg:col-span-1 flex flex-col gap-6">
-            <TokenSwap tokens={tokens} portfolio={portfolioAssets} disabled={!isConnected || loading || !is1inchApiConfigured} />
+            <TokenSwap 
+                tokens={tokens} 
+                portfolio={portfolioAssets} 
+                disabled={!isConnected || loading || !is1inchApiConfigured}
+                onQuoteResponse={handleQuoteResponse}
+            />
           </div>
         </div>
         {isConnected && (
-            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Portfolio API Response</CardTitle>
-                        <CardDescription>Raw JSON data from the Moralis Balances API.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ScrollArea className="h-[400px] w-full bg-secondary/50 rounded-md p-4">
-                            <pre className="text-xs text-muted-foreground">
-                                {JSON.stringify(apiResponses.portfolio, null, 2)}
-                            </pre>
-                        </ScrollArea>
-                    </CardContent>
-                </Card>
-                 <Card>
-                    <CardHeader>
-                        <CardTitle>Spot Price API Response</CardTitle>
-                        <CardDescription>Raw JSON data from the 1inch Spot Price API.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ScrollArea className="h-[400px] w-full bg-secondary/50 rounded-md p-4">
-                            <pre className="text-xs text-muted-foreground">
-                                {JSON.stringify(apiSpotPriceResponse, null, 2)}
-                            </pre>
-                        </ScrollArea>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Tokens API Response</CardTitle>
-                        <CardDescription>Raw JSON data from the 1inch tokens endpoint.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ScrollArea className="h-[400px] w-full bg-secondary/50 rounded-md p-4">
-                            <pre className="text-xs text-muted-foreground">
-                                {JSON.stringify(apiResponses.tokens, null, 2)}
-                            </pre>
-                        </ScrollArea>
-                    </CardContent>
-                </Card>
+            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+               {renderApiResponseCard(
+                  "Moralis Wallet API",
+                  "Fetches native balance and ERC20 tokens.",
+                  apiResponses.portfolio
+                )}
+                {renderApiResponseCard(
+                    "1inch Tokens API",
+                    "Fetches a list of all swappable tokens.",
+                    apiResponses.tokens
+                )}
+                {renderApiResponseCard(
+                    "1inch Spot Price API",
+                    "Fetches current prices for portfolio tokens.",
+                    apiSpotPriceResponse
+                )}
+                {renderApiResponseCard(
+                    "1inch Quote API",
+                    "Fetches swap quotes and gas estimates.",
+                    apiQuoteResponse
+                )}
             </div>
         )}
       </main>

@@ -8,14 +8,24 @@ const API_BASE = "https://deep-index.moralis.io/api/v2.2";
 const CHAIN_ID = "eth";
 const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2'; // Wrapped ETH address for price lookups
 
-async function fetchMoralis(path: string, options: RequestInit = {}) {
-  const apiKey = process.env.MORALIS_API_KEY;
-  if (!apiKey || apiKey === 'YOUR_MORALIS_API_KEY_HERE') {
-    console.error("Moralis API key is not set. Please add it to your .env file.");
-    return { error: "API key not configured." };
-  }
+type ApiResult = {
+    request: { method: string, url: string };
+    response: any;
+    error?: string;
+}
 
+async function fetchMoralis(path: string, options: RequestInit = {}): Promise<ApiResult> {
+  const apiKey = process.env.MORALIS_API_KEY;
   const url = `${API_BASE}${path}`;
+  const method = options.method || 'GET';
+
+  const requestDetails = { method, url };
+
+  if (!apiKey || apiKey === 'YOUR_MORALIS_API_KEY_HERE') {
+    const errorMsg = "Moralis API key is not set. Please add it to your .env file.";
+    console.error(errorMsg);
+    return { request: requestDetails, response: { error: "API key not configured." }, error: errorMsg };
+  }
 
   try {
     const response = await fetch(url, {
@@ -28,40 +38,44 @@ async function fetchMoralis(path: string, options: RequestInit = {}) {
       cache: 'no-store'
     });
 
+    const responseBody = await response.json().catch(() => ({ message: response.statusText }));
+
     if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({ message: response.statusText }));
-      console.error(`Moralis API error: ${errorBody.message}`, { status: response.status, body: errorBody });
-      return { error: errorBody.message || response.statusText };
+      console.error(`Moralis API error: ${responseBody.message}`, { status: response.status, body: responseBody });
+      return { request: requestDetails, response: responseBody, error: responseBody.message || response.statusText };
     }
 
-    return response.json();
+    return { request: requestDetails, response: responseBody };
   } catch (error: any) {
     console.error("Failed to fetch from Moralis API:", error);
-    return { error: error.message || "Failed to fetch" };
+    return { request: requestDetails, response: { error: error.message }, error: error.message || "Failed to fetch" };
   }
 }
 
 export async function getPortfolioAssets(address: string): Promise<{ assets: Asset[], raw: any, error?: string }> {
   // Fetch both native balance and ERC20 balances in parallel
-  const [nativeBalanceData, erc20BalancesData] = await Promise.all([
+  const [nativeBalanceResult, erc20BalancesResult] = await Promise.all([
     fetchMoralis(`/${address}/balance?chain=${CHAIN_ID}`),
     fetchMoralis(`/${address}/erc20?chain=${CHAIN_ID}`)
   ]);
 
   const rawResponses = {
-    portfolio: { nativeBalance: nativeBalanceData || {}, erc20Balances: erc20BalancesData || {} },
+    portfolio: { nativeBalance: nativeBalanceResult, erc20Balances: erc20BalancesResult },
     spotPrices: {}
   };
+  
+  const nativeBalanceData = nativeBalanceResult.response;
+  const erc20BalancesData = erc20BalancesResult.response;
 
-  if ((!nativeBalanceData || nativeBalanceData.error) && (!erc20BalancesData || erc20BalancesData.error)) {
-    return { assets: [], raw: rawResponses, error: nativeBalanceData?.error || erc20BalancesData?.error };
+  if ((!nativeBalanceData || nativeBalanceResult.error) && (!erc20BalancesData || erc20BalancesResult.error)) {
+    return { assets: [], raw: rawResponses, error: nativeBalanceResult.error || erc20BalancesResult.error };
   }
 
   const assets: Asset[] = [];
   const tokenAddressesToPrice: string[] = [];
 
   // Collect ERC20 token addresses
-  if (erc20BalancesData && !erc20BalancesData.error && Array.isArray(erc20BalancesData)) {
+  if (erc20BalancesData && !erc20BalancesResult.error && Array.isArray(erc20BalancesData)) {
     erc20BalancesData.forEach((token: any) => {
       if (token.token_address) {
         tokenAddressesToPrice.push(token.token_address);
@@ -79,7 +93,7 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
   const ethPrice = priceMap[WETH_ADDRESS.toLowerCase()] || 0;
 
   // Process native ETH balance
-  if (nativeBalanceData && !nativeBalanceData.error) {
+  if (nativeBalanceData && !nativeBalanceResult.error) {
     const ethBalance = Number(nativeBalanceData.balance) / (10 ** 18);
     if (ethBalance > 0) {
         assets.push({
@@ -95,7 +109,7 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
   }
 
   // Process ERC20 tokens with their prices
-  if (erc20BalancesData && !erc20BalancesData.error && Array.isArray(erc20BalancesData)) {
+  if (erc20BalancesData && !erc20BalancesResult.error && Array.isArray(erc20BalancesData)) {
     assets.push(...erc20BalancesData.map((asset: any) => {
         const balance = Number(asset.balance) / (10 ** Number(asset.decimals));
         const price = priceMap[asset.token_address.toLowerCase()] || 0;
