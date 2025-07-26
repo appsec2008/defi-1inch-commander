@@ -35,7 +35,7 @@ export default function Home() {
           promises.push(getPortfolioAction(address));
         } else {
           console.log("Moralis API not configured for UI. Skipping portfolio fetch.");
-          promises.push(Promise.resolve({ assets: [], raw: { error: 'Moralis API not configured.'} }));
+          promises.push(Promise.resolve({ assets: [], raw: { portfolio: { error: 'Moralis API not configured.'}, spotPrices: { error: 'Moralis API not configured.'} } }));
         }
 
         if (is1inchApiConfigured) {
@@ -147,7 +147,6 @@ export default function Home() {
                             <pre className="text-xs text-muted-foreground">
                                 {JSON.stringify(apiResponses.tokens, null, 2)}
                             </pre>
-                             <p className="text-xs text-center text-muted-foreground mt-2">(Showing first 100 tokens)</p>
                         </ScrollArea>
                     </CardContent>
                 </Card>
