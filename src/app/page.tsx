@@ -18,7 +18,7 @@ export default function Home() {
   const [portfolioAssets, setPortfolioAssets] = useState<Asset[]>([]);
   const [tokens, setTokens] = useState<Token[]>([]);
   const [loading, setLoading] = useState(true);
-  const [apiResponses, setApiResponses] = useState({ portfolio: {}, tokens: {} });
+  const [apiTokensResponse, setApiTokensResponse] = useState({});
   const [apiSpotPriceResponse, setApiSpotPriceResponse] = useState({});
   const [apiQuoteResponse, setApiQuoteResponse] = useState({});
 
@@ -60,10 +60,7 @@ export default function Home() {
             setTokens(tokensResult.tokens);
         }
         
-        setApiResponses({ 
-            portfolio: portfolioResult.raw?.portfolio || {}, 
-            tokens: tokensResult.raw || {},
-        });
+        setApiTokensResponse(tokensResult.raw || {});
         setApiSpotPriceResponse(portfolioResult.raw?.spotPrices || {});
 
         setLoading(false);
@@ -71,7 +68,7 @@ export default function Home() {
         setLoading(false);
         setPortfolioAssets([]);
         setTokens([]);
-        setApiResponses({ portfolio: {}, tokens: {} });
+        setApiTokensResponse({});
         setApiSpotPriceResponse({});
         setApiQuoteResponse({});
       }
@@ -143,16 +140,11 @@ export default function Home() {
           </div>
         </div>
         {isConnected && (
-            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-               {renderApiResponseCard(
-                  "Moralis Wallet API",
-                  "Fetches native balance and ERC20 tokens.",
-                  apiResponses.portfolio
-                )}
+            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
                 {renderApiResponseCard(
                     "1inch Tokens API",
                     "Fetches a list of all swappable tokens.",
-                    apiResponses.tokens
+                    apiTokensResponse
                 )}
                 {renderApiResponseCard(
                     "1inch Spot Price API",
