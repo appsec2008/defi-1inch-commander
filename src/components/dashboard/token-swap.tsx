@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import type { Token, Quote } from "@/lib/types";
+import type { Token, Quote, Asset } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -35,6 +35,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 
 interface TokenSwapProps {
   tokens: Token[];
+  portfolio: Asset[];
   disabled: boolean;
 }
 
@@ -46,7 +47,7 @@ type SwapSuccessDetails = {
     txHash: string;
 }
 
-export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
+export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapProps) {
   const [fromTokenSymbol, setFromTokenSymbol] = useState<string | undefined>();
   const [toTokenSymbol, setToTokenSymbol] = useState<string | undefined>();
   const [fromAmount, setFromAmount] = useState<string>("1.0");
@@ -66,14 +67,40 @@ export function TokenSwap({ tokens = [], disabled }: TokenSwapProps) {
 
   useEffect(() => {
     if (tokens.length > 0) {
-        if (!fromTokenSymbol || !tokens.find(t => t.symbol === fromTokenSymbol)) {
-            setFromTokenSymbol(tokens.find(t => t.symbol === 'ETH')?.symbol || tokens[0]?.symbol);
-        }
-        if (!toTokenSymbol || !tokens.find(t => t.symbol === toTokenSymbol) || toTokenSymbol === fromTokenSymbol) {
-            setToTokenSymbol(tokens.find(t => t.symbol === 'USDC' && t.symbol !== fromTokenSymbol)?.symbol || tokens.find(t => t.symbol !== fromTokenSymbol)?.symbol);
-        }
+      let defaultFromSymbol: string | undefined;
+
+      // Logic to find the highest value asset
+      if (portfolio.length > 0) {
+        const highestValueAsset = portfolio.reduce((max, asset) => {
+          const assetValue = asset.balance * asset.price;
+          const maxValue = max.balance * max.price;
+          return assetValue > maxValue ? asset : max;
+        });
+        defaultFromSymbol = highestValueAsset.symbol;
+      } else {
+        // Fallback if portfolio is empty
+        defaultFromSymbol = tokens.find(t => t.symbol === 'ETH')?.symbol || tokens[0]?.symbol;
+      }
+      
+      setFromTokenSymbol(defaultFromSymbol);
+      
+      // Smart "To" token logic
+      let defaultToSymbol: string | undefined;
+      if (defaultFromSymbol === 'USDT') {
+        defaultToSymbol = tokens.find(t => t.symbol === 'USDC')?.symbol;
+      } else {
+        defaultToSymbol = tokens.find(t => t.symbol === 'USDT')?.symbol;
+      }
+
+      // Fallback if preferred 'To' token doesn't exist or is same as 'From'
+      if (!defaultToSymbol || defaultToSymbol === defaultFromSymbol) {
+        defaultToSymbol = tokens.find(t => t.symbol !== defaultFromSymbol)?.symbol;
+      }
+      
+      setToTokenSymbol(defaultToSymbol);
     }
-  }, [tokens, fromTokenSymbol, toTokenSymbol]);
+  }, [tokens, portfolio]);
+
 
   const fetchQuote = useCallback(async () => {
     if (!fromTokenData || !toTokenData || !debouncedFromAmount || isNaN(parseFloat(debouncedFromAmount)) || disabled) {

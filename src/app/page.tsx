@@ -103,7 +103,7 @@ export default function Home() {
             <RiskAssessment portfolio={portfolioAssets} disabled={!isConnected || loading || !isMoralisApiConfigured} />
           </div>
           <div className="lg:col-span-1 flex flex-col gap-6">
-            <TokenSwap tokens={tokens} disabled={!isConnected || loading || !is1inchApiConfigured} />
+            <TokenSwap tokens={tokens} portfolio={portfolioAssets} disabled={!isConnected || loading || !is1inchApiConfigured} />
           </div>
         </div>
         {isConnected && (
