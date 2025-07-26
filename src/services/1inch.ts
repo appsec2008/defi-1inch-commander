@@ -63,7 +63,7 @@ export async function getQuote(fromTokenAddress: string, toTokenAddress: string,
     }
     
     const quote: Quote = {
-        toAmount: data.dstAmount,
+        toAmount: data.toAmount,
         gas: data.gas,
         route: data.route,
     };

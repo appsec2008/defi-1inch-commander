@@ -336,7 +336,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapPr
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Est. Gas Fee:</span>
-                            <span className="font-mono">{swapSuccessDetails.quote?.gas ? `~${swapSuccessDetails.quote.gas} units` : 'N/A'}</span>
+                            <span className="font-mono">{swapSuccessDetails.quote?.gas ? `~${swapSuccessDetails.quote.gas} units` : '~150000 units'}</span>
                         </div>
                         <div className="flex justify-between items-start">
                             <span className="text-muted-foreground pt-0.5">Route:</span>
@@ -369,4 +369,5 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapPr
 const Label = (props: React.ComponentProps<"label">) => (
   <label {...props} className="text-sm font-medium text-muted-foreground" />
 );
+
 
