@@ -336,13 +336,13 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled }: TokenSwapPr
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Est. Gas Fee:</span>
-                            <span className="font-mono">~{swapSuccessDetails.quote.gas} units</span>
+                            <span className="font-mono">{swapSuccessDetails.quote?.gas ? `~${swapSuccessDetails.quote.gas} units` : 'N/A'}</span>
                         </div>
                         <div className="flex justify-between items-start">
                             <span className="text-muted-foreground pt-0.5">Route:</span>
                             <div className="flex items-center gap-1.5 font-mono flex-wrap text-right max-w-[240px] justify-end">
                                 <span>{swapSuccessDetails.fromToken.symbol}</span>
-                                {swapSuccessDetails.quote && swapSuccessDetails.quote.route && swapSuccessDetails.quote.route.map((hop, hopIndex) => (
+                                {swapSuccessDetails.quote?.route?.map((hop, hopIndex) => (
                                     <div key={hopIndex} className="flex items-center gap-1.5">
                                         <ChevronsRight className="w-4 h-4 text-muted-foreground" />
                                         <div className="flex items-center gap-1">
