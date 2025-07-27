@@ -196,31 +196,36 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
 
   const handleExecuteSwap = async () => {
     if (!fromTokenData || !toTokenData || !fromAmount || !address) return;
-    setIsSwapping(true);
     
-    // Use the getSwapAction to check for errors like insufficient balance
-    const swapResult = await getSwapAction({ address: fromTokenData.address, decimals: fromTokenData.decimals, symbol: fromTokenData.symbol }, { address: toTokenData.address, decimals: toTokenData.decimals, symbol: toTokenData.symbol }, fromAmount, address);
+    setIsSwapping(true);
+    const swapResult = await getSwapAction(
+      { address: fromTokenData.address, decimals: fromTokenData.decimals, symbol: fromTokenData.symbol },
+      { address: toTokenData.address, decimals: toTokenData.decimals, symbol: toTokenData.symbol },
+      fromAmount,
+      address
+    );
+    setIsSwapping(false);
 
     if (swapResult.error) {
-        setQuoteError(swapResult.error); // Display the error from the server
-        setIsSwapping(false);
-        return;
+      setQuoteError(swapResult.error);
+      return;
     }
 
-    // Simulate API call for swap if no server-side error
-    setTimeout(() => {
-      setIsSwapping(false);
-      const simulatedTxHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
-      setSwapSuccessDetails({
-          quote: swapResult.data!,
-          fromToken: fromTokenData,
-          toToken: toTokenData,
-          fromAmount,
-          txHash: simulatedTxHash,
-          gas: gas,
-      });
-      setIsSwapSuccessDialogOpen(true);
-    }, 1500);
+    // Since this is a simulation, we generate a fake hash and show the success dialog.
+    // In a real app, this would involve sending the transaction (`swapResult.data.tx`)
+    // to the user's wallet to be signed and broadcasted.
+    if (swapResult.data) {
+        const simulatedTxHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+        setSwapSuccessDetails({
+            quote: swapResult.data!,
+            fromToken: fromTokenData,
+            toToken: toTokenData,
+            fromAmount,
+            txHash: simulatedTxHash,
+            gas: gas,
+        });
+        setIsSwapSuccessDialogOpen(true);
+    }
   };
 
   const toAmountDisplay = isFetchingQuote ? "..." : (quote?.dstAmount ? parseFloat(quote.dstAmount).toFixed(5) : "");
