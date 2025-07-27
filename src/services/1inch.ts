@@ -84,15 +84,21 @@ export async function getQuote(fromTokenAddress: string, toTokenAddress: string,
     return { quote, raw: result };
 }
 
-export async function getSwap(fromTokenAddress: string, toTokenAddress: string, amount: string, fromAddress: string): Promise<{ swap: Swap | null, raw: ApiResult, error?: string }> {
+export async function getSwap(fromTokenAddress: string, toTokenAddress: string, amount: string, fromAddress: string, fromTokenSymbol?: string): Promise<{ swap: Swap | null, raw: ApiResult, error?: string }> {
     const path = `/swap/v6.0/${CHAIN_ID}/swap?src=${fromTokenAddress}&dst=${toTokenAddress}&amount=${amount}&from=${fromAddress}&slippage=1`;
     const result = await fetch1inch(path);
+
+    // Custom error for insufficient balance to be more user-friendly
+    if (result.response?.description?.includes('insufficient funds')) {
+        const errorMsg = `Not enough ${fromTokenSymbol || fromTokenAddress} balance.`;
+        return { swap: null, raw: result, error: errorMsg };
+    }
 
     if (!result.response || result.error) {
         return { swap: null, raw: result, error: result.error || result.response?.description };
     }
 
-    return { swap: { tx: result.response.tx }, raw: result };
+    return { swap: { ...result.response, tx: result.response.tx }, raw: result };
 }
 
 

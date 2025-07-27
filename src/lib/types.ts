@@ -31,6 +31,6 @@ export type SwapTransaction = {
     gasPrice: string;
 }
 
-export type Swap = {
+export type Swap = Quote & {
     tx: SwapTransaction;
 }

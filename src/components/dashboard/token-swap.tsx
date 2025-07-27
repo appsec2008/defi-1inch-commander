@@ -32,7 +32,7 @@ import {
   } from "@/components/ui/alert-dialog"
 import { ArrowDown, ChevronsRight, Loader2, Repeat, Terminal } from "lucide-react";
 import Image from "next/image";
-import { getQuoteAction, getGasEstimateAction } from "@/app/actions";
+import { getQuoteAction, getGasEstimateAction, getSwapAction } from "@/app/actions";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAccount } from "wagmi";
 
@@ -200,15 +200,25 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
     handleFromTokenChange(tempToSymbol);
   };
 
-  const handleExecuteSwap = () => {
-    if (!quote || !fromTokenData || !toTokenData || !fromAmount) return;
+  const handleExecuteSwap = async () => {
+    if (!fromTokenData || !toTokenData || !fromAmount || !address) return;
     setIsSwapping(true);
-    // Simulate API call for swap
+    
+    // Use the getSwapAction to check for errors like insufficient balance
+    const swapResult = await getSwapAction({ address: fromTokenData.address, decimals: fromTokenData.decimals, symbol: fromTokenData.symbol }, { address: toTokenData.address, decimals: toTokenData.decimals, symbol: toTokenData.symbol }, fromAmount, address);
+
+    if (swapResult.error) {
+        setQuoteError(swapResult.error); // Display the error from the server
+        setIsSwapping(false);
+        return;
+    }
+
+    // Simulate API call for swap if no server-side error
     setTimeout(() => {
       setIsSwapping(false);
       const simulatedTxHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
       setSwapSuccessDetails({
-          quote,
+          quote: swapResult.data!,
           fromToken: fromTokenData,
           toToken: toTokenData,
           fromAmount,

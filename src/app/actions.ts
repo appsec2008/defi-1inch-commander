@@ -105,6 +105,29 @@ export async function getQuoteAction(fromToken: { address: string, decimals: num
     }
 }
 
+export async function getSwapAction(fromToken: { address: string, decimals: number, symbol: string }, toToken: { address: string, decimals: number, symbol: string }, fromAmount: string, fromAddress: string) {
+    if (!fromAmount || isNaN(parseFloat(fromAmount)) || parseFloat(fromAmount) <= 0) {
+        return { data: null, error: "Invalid amount", raw: {} };
+    }
+    try {
+        const amountInSmallestUnit = parseUnits(fromAmount, fromToken.decimals);
+        const { swap, raw, error } = await getSwap(fromToken.address, toToken.address, amountInSmallestUnit.toString(), fromAddress, fromToken.symbol);
+
+        if (error) {
+            return { data: null, error, raw };
+        }
+        
+        if (swap && swap.dstAmount) {
+            const toAmountFormatted = formatUnits(BigInt(swap.dstAmount), toToken.decimals);
+            return { data: { ...swap, dstAmount: toAmountFormatted }, raw, error: null };
+        }
+        return { data: null, error: 'Failed to get swap data.', raw };
+    } catch (e: any) {
+        console.error("Swap Action Error:", e);
+        return { data: null, error: e.message || 'An unexpected error occurred.', raw: {} };
+    }
+}
+
 
 export async function getGasEstimateAction(fromToken: { address: string, decimals: number }, toToken: { address: string, decimals: number }, fromAmount: string, fromAddress: string) {
     if (!fromAmount || isNaN(parseFloat(fromAmount)) || parseFloat(fromAmount) <= 0) {
