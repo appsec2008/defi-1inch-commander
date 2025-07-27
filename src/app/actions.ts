@@ -9,6 +9,7 @@ import { estimateGas } from '@/services/ethers';
 
 export async function prepareComprehensiveRiskAnalysis(address: string) {
     try {
+        console.log("Starting comprehensive risk analysis preparation for address:", address);
         const [
             portfolioResult,
             historyResult,
@@ -26,6 +27,27 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
             getHealthCheck(),
             getMoralisPortfolio(address), // Fetch portfolio to identify top assets
         ]);
+
+        console.log("All API calls completed.");
+
+        // Check for errors in each API call
+        const errors = [
+            { name: '1inch Portfolio', error: portfolioResult.error },
+            { name: '1inch History', error: historyResult.error },
+            { name: '1inch Tokens', error: tokensResult.error },
+            { name: '1inch Liquidity Sources', error: liquiditySourcesResult.error },
+            { name: '1inch Presets', error: presetsResult.error },
+            { name: '1inch Health Check', error: healthResult.error },
+            { name: 'Moralis Portfolio', error: moralisPortfolioResult.error },
+        ].filter(result => !!result.error);
+
+        if (errors.length > 0) {
+            const errorMessage = `Failed to fetch data from: ${errors.map(e => e.name).join(', ')}. Details: ${errors.map(e => e.error).join(', ')}`;
+            console.error("Error during data preparation:", errorMessage);
+            return { data: null, error: errorMessage };
+        }
+
+        console.log("Successfully fetched all data. Formatting context...");
 
         // Extract clean data instead of raw API responses
         const context = {
@@ -60,7 +82,8 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
         const fullPrompt = analyzePortfolioRiskPrompt.prompt
             .replace('{{{portfolioData}}}', portfolioDataString)
             .replace('{{{topTokenHoldings}}}', topHoldingsString);
-
+        
+        console.log("Preparation complete. Returning data to client.");
         return { 
             data: {
                 prompt: fullPrompt,
@@ -69,9 +92,9 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
             error: null
         };
 
-    } catch (error) {
-        console.error('Error during comprehensive risk analysis preparation:', error);
-        return { data: null, error: 'Failed to prepare comprehensive data. Please try again later.' };
+    } catch (error: any) {
+        console.error('Critical error during comprehensive risk analysis preparation:', error);
+        return { data: null, error: error.message || 'Failed to prepare comprehensive data. Please check the server logs.' };
     }
 }
 
