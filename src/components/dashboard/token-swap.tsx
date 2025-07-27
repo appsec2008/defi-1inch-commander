@@ -77,14 +77,10 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
   const toTokenData = useMemo(() => tokens.find(t => t.symbol === toTokenSymbol), [tokens, toTokenSymbol]);
   
   const portfolioTokens = useMemo(() => {
-    // Create a Set of symbols from the 1inch token list for efficient lookup
-    const swappableSymbols = new Set(tokens.map(t => t.symbol));
-    // Filter the user's portfolio to only include assets that are also in the swappable tokens list
-    const portfolioAssets = portfolio.filter(a => swappableSymbols.has(a.symbol));
-    // Map these assets back to the full Token type from the main tokens list
-    const portfolioAssetSymbols = new Set(portfolioAssets.map(a => a.symbol));
-    return tokens.filter(t => portfolioAssetSymbols.has(t.symbol));
+    const portfolioSymbols = new Set(portfolio.map(a => a.symbol));
+    return tokens.filter(t => portfolioSymbols.has(t.symbol));
   }, [tokens, portfolio]);
+
 
   const is1inchApiConfigured = !!process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
 
