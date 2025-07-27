@@ -109,6 +109,12 @@ export default function Home() {
         setApiGasResponse({});
         setApiSpotPricesResponse({});
         setApiRiskAnalysisResponse({});
+        setApiAiPortfolioResponse({});
+        setApiAiHistoryResponse({});
+        setApiAiTokensResponse({});
+        setApiAiLiquidityResponse({});
+        setApiAiPresetsResponse({});
+        setApiAiHealthResponse({});
       }
     }
     fetchData();
@@ -116,8 +122,13 @@ export default function Home() {
 
   const renderApiResponseCard = (title: string, description: string, data: any) => {
     const isAiCard = title === "AI Risk Assessment";
-    const requestData = isAiCard ? data?.request : JSON.stringify(data?.request || {}, null, 2);
-    const responseData = isAiCard ? data?.response : (data?.response || data || {});
+    let requestData = data?.request;
+    let responseData = data?.response || data || {};
+
+    // For AI card, request is a pre-formatted string. For others, it's an object.
+    const requestContent = isAiCard 
+      ? requestData 
+      : JSON.stringify(requestData || {}, null, 2);
     
     return (
         <Card>
@@ -129,7 +140,7 @@ export default function Home() {
             <h4 className="text-sm font-semibold mb-2">Request</h4>
             <ScrollArea className="h-[200px] w-full bg-secondary/50 rounded-md p-4 mb-4">
                 <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
-                    {isAiCard ? JSON.stringify(requestData, null, 2) : JSON.stringify(data?.request || {}, null, 2)}
+                    {requestContent}
                 </pre>
             </ScrollArea>
 

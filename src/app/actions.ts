@@ -67,11 +67,24 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
             health: JSON.stringify(healthResult.response, null, 2),
             topTokenHoldings: JSON.stringify(topHoldings, null, 2),
         };
+
+        // Construct the full prompt for display purposes
+        let fullPromptForDisplay = analyzePortfolioRiskPrompt.prompt || '';
+        if (typeof fullPromptForDisplay !== 'string') {
+            console.error("AI prompt template from Genkit is not a valid string.", analyzePortfolioRiskPrompt);
+            return { data: null, error: "AI prompt template from Genkit is invalid. Check server logs." };
+        }
+
+        for (const key in analysisInput) {
+            const placeholder = `{{{${key}}}}`;
+            fullPromptForDisplay = fullPromptForDisplay.replace(placeholder, (analysisInput as any)[key]);
+        }
         
         console.log("Preparation complete. Returning data to client.");
         return { 
             data: {
                 analysisInput: analysisInput,
+                fullPromptForDisplay: fullPromptForDisplay,
                 raw: {
                     portfolio: portfolioResult,
                     history: historyResult,
