@@ -1,6 +1,7 @@
+
 'use server';
 
-import type { Quote, Token, Swap, Asset } from "@/lib/types";
+import type { Quote, Token, Swap, Asset, FusionQuote } from "@/lib/types";
 
 const API_BASE = "https://api.1inch.dev";
 const CHAIN_ID = "1"; // Ethereum Mainnet
@@ -74,20 +75,25 @@ export async function getTokens(): Promise<{ tokens: Token[], raw: ApiResult, er
     return { tokens: tokenList, raw: result };
 }
 
-export async function getQuote(fromTokenAddress: string, toTokenAddress: string, amount: string): Promise<{ quote: Quote | null, raw: ApiResult, error?: string }> {
-    const path = `/swap/v6.0/${CHAIN_ID}/quote?src=${fromTokenAddress}&dst=${toTokenAddress}&amount=${amount}`;
-    const result = await fetch1inch(path);
+export async function getQuote(fromTokenAddress: string, toTokenAddress: string, amount: string, walletAddress: string): Promise<{ quote: FusionQuote | null, raw: ApiResult, error?: string }> {
+    const params = new URLSearchParams({
+        srcChain: CHAIN_ID,
+        dstChain: CHAIN_ID,
+        srcTokenAddress: fromTokenAddress,
+        dstTokenAddress: toTokenAddress,
+        amount: amount,
+        walletAddress: walletAddress,
+        enableEstimate: 'true',
+    });
+
+    const path = `/fusion-plus/quoter/v1.0/quote/receive?${params.toString()}`;
+    const result = await fetch1inch(path, { method: 'POST' });
     
     if (!result.response || result.error) {
         return { quote: null, raw: result, error: result.error || result.response?.description };
     }
     
-    const quote: Quote = {
-        dstAmount: result.response.dstAmount,
-        route: result.response.route,
-    };
-    
-    return { quote, raw: result };
+    return { quote: result.response, raw: result };
 }
 
 export async function getSwap(fromTokenAddress: string, toTokenAddress: string, amount: string, fromAddress: string, fromTokenSymbol?: string): Promise<{ swap: Swap | null, raw: ApiResult, error?: string }> {

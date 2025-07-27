@@ -1,3 +1,4 @@
+
 'use server';
 
 import { analyzePortfolioRisk } from '@/ai/flows/analyze-portfolio-risk';
@@ -10,25 +11,19 @@ const PROMPT_TEMPLATE_FOR_DISPLAY = `You are an expert portfolio risk analyst an
 
 You will be given several pieces of data, each from a specific 1inch API endpoint. Use all of this information to build a complete picture of the user's context and the market.
 
-**1. User's Top Token Holdings (Derived from 1inch Balance API):**
-This is the most important data for your specific recommendations. This JSON array shows the user's most significant assets by value. Treat this as the primary portfolio data for making concrete suggestions.
+**1. 1inch Portfolio API Data:**
+This JSON object shows the user's wallet balances from the 1inch perspective.
 \`\`\`json
-{{{topTokenHoldings}}}
+{{{portfolio}}}
 \`\`\`
 
-**2. Full Portfolio (from 1inch Balance API):**
-This JSON object provides the complete list of all token balances for the user's wallet. Use this to understand the full scope and diversity of the portfolio, including long-tail assets.
-\`\`\`json
-{{{fullPortfolio}}}
-\`\`\`
-
-**3. 1inch History API Data:**
+**2. 1inch History API Data:**
 This JSON object lists the user's recent transaction history. Analyze it for trading frequency, patterns, and risk tolerance.
 \`\`\`json
 {{{history}}}
 \`\`\`
 
-**4. 1inch Liquidity Sources & Presets API Data:**
+**3. 1inch Liquidity Sources & Presets API Data:**
 These JSON objects detail the available trading protocols and routing configurations on the network. This provides context about the current trading environment.
 Liquidity Sources:
 \`\`\`json
@@ -57,12 +52,14 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
             historyResult,
             liquiditySourcesResult,
             presetsResult,
+            healthCheckResult,
             portfolioResult,
         ] = await Promise.all([
             getHistory(address),
             getLiquiditySources(),
             getPresets(),
-            getPortfolio(address), 
+            getHealthCheck(),
+            getPortfolio(address)
         ]);
 
         console.log("All API calls completed.");
@@ -71,6 +68,7 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
             { name: '1inch History', error: historyResult.error },
             { name: '1inch Liquidity Sources', error: liquiditySourcesResult.error },
             { name: '1inch Presets', error: presetsResult.error },
+            { name: '1inch Health Check', error: healthCheckResult.error },
             { name: '1inch Portfolio', error: portfolioResult.error },
         ].filter(result => !!result.error);
 
@@ -79,29 +77,16 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
         }
 
         console.log("Successfully fetched all data. Formatting context...");
-
-        const topHoldings = (portfolioResult.assets || [])
-            .sort((a, b) => (b.balance * b.price) - (a.balance * a.price))
-            .slice(0, 5)
-            .map(asset => ({
-                name: asset.name,
-                symbol: asset.symbol,
-                balance: asset.balance,
-                price: asset.price,
-                value: asset.balance * asset.price,
-            }));
         
         const analysisInput = {
-            topTokenHoldings: topHoldings,
-            fullPortfolio: portfolioResult.raw?.balance?.response,
+            portfolio: portfolioResult.raw,
             history: historyResult.response,
             liquiditySources: liquiditySourcesResult.response,
             presets: presetsResult.response,
         };
 
         const fullPromptForDisplay = PROMPT_TEMPLATE_FOR_DISPLAY
-            .replace('{{{topTokenHoldings}}}', JSON.stringify(analysisInput.topTokenHoldings, null, 2))
-            .replace('{{{fullPortfolio}}}', JSON.stringify(analysisInput.fullPortfolio, null, 2))
+            .replace('{{{portfolio}}}', JSON.stringify(analysisInput.portfolio, null, 2))
             .replace('{{{history}}}', JSON.stringify(analysisInput.history, null, 2))
             .replace('{{{liquiditySources}}}', JSON.stringify(analysisInput.liquiditySources, null, 2))
             .replace('{{{presets}}}', JSON.stringify(analysisInput.presets, null, 2));
@@ -115,6 +100,7 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
                     history: historyResult,
                     liquiditySources: liquiditySourcesResult,
                     presets: presetsResult,
+                    healthCheck: healthCheckResult,
                     portfolio: portfolioResult.raw,
                 }
             },
@@ -156,21 +142,38 @@ export async function getTokensAction() {
 }
 
 
-export async function getQuoteAction(fromToken: { address: string, decimals: number }, toToken: { address: string, decimals: number }, fromAmount: string) {
+export async function getQuoteAction(fromToken: { address: string, decimals: number }, toToken: { address: string, decimals: number }, fromAmount: string, fromAddress: string) {
     if (!fromAmount || isNaN(parseFloat(fromAmount)) || parseFloat(fromAmount) <= 0) {
         return { data: null, error: "Invalid amount", raw: {} };
     }
     try {
         const amountInSmallestUnit = parseUnits(fromAmount, fromToken.decimals);
-        const { quote, raw, error } = await getQuote(fromToken.address, toToken.address, amountInSmallestUnit.toString());
+        const { quote, raw, error } = await getQuote(fromToken.address, toToken.address, amountInSmallestUnit.toString(), fromAddress);
 
         if (error) {
             return { data: null, error, raw };
         }
         
-        if (quote && quote.dstAmount) {
-            const toAmountFormatted = formatUnits(BigInt(quote.dstAmount), toToken.decimals);
-            return { data: { ...quote, dstAmount: toAmountFormatted }, raw, error: null };
+        if (quote && quote.dstTokenAmount) {
+            const formatPreset = (preset: any) => {
+                if (!preset) return preset;
+                return {
+                    ...preset,
+                    auctionStartAmount: preset.auctionStartAmount ? formatUnits(BigInt(preset.auctionStartAmount), toToken.decimals) : undefined,
+                    auctionEndAmount: preset.auctionEndAmount ? formatUnits(BigInt(preset.auctionEndAmount), toToken.decimals) : undefined,
+                    startAmount: preset.startAmount ? formatUnits(BigInt(preset.startAmount), toToken.decimals) : undefined,
+                }
+            }
+            const formattedQuote = {
+                ...quote,
+                dstTokenAmount: formatUnits(BigInt(quote.dstTokenAmount), toToken.decimals),
+                presets: {
+                    fast: formatPreset(quote.presets.fast),
+                    medium: formatPreset(quote.presets.medium),
+                    slow: formatPreset(quote.presets.slow),
+                }
+            }
+            return { data: formattedQuote, raw, error: null };
         }
         return { data: null, error: 'Failed to get quote.', raw };
     } catch (e: any) {

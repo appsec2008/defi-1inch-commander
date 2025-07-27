@@ -1,15 +1,15 @@
 
-
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import type { Token, Quote, Asset } from "@/lib/types";
+import type { Token, Asset, FusionQuote, FusionPreset } from "@/lib/types";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,11 +30,13 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
   } from "@/components/ui/alert-dialog"
-import { ArrowDown, ChevronsRight, Loader2, Repeat, Terminal } from "lucide-react";
+import { ArrowDown, ChevronsRight, Loader2, Repeat, Terminal, Zap, Clock, Shield } from "lucide-react";
 import Image from "next/image";
-import { getQuoteAction, getGasEstimateAction, getSwapAction } from "@/app/actions";
+import { getQuoteAction } from "@/app/actions";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAccount } from "wagmi";
+import { cn } from "@/lib/utils";
+
 
 interface TokenSwapProps {
   tokens: Token[];
@@ -45,12 +47,13 @@ interface TokenSwapProps {
 }
 
 type SwapSuccessDetails = {
-    quote: Quote;
+    quote: FusionQuote;
+    preset: FusionPreset;
+    presetName: string;
     fromToken: Token;
     toToken: Token;
     fromAmount: string;
     txHash: string;
-    gas: string | null;
 }
 
 export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteResponse, onGasResponse }: TokenSwapProps) {
@@ -59,14 +62,11 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
   const [toTokenSymbol, setToTokenSymbol] = useState<string | undefined>();
   const [fromAmount, setFromAmount] = useState<string>("1.0");
   
-  const [quote, setQuote] = useState<Quote | null>(null);
+  const [quote, setQuote] = useState<FusionQuote | null>(null);
+  const [selectedPreset, setSelectedPreset] = useState<'fast' | 'medium' | 'slow'>('fast');
+
   const [isFetchingQuote, setIsFetchingQuote] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
-
-  const [gas, setGas] = useState<string | null>(null);
-  const [isFetchingGas, setIsFetchingGas] = useState(false);
-  const [gasError, setGasError] = useState<string | null>(null);
-
 
   const [isSwapping, setIsSwapping] = useState<boolean>(false);
   const [isSwapSuccessDialogOpen, setIsSwapSuccessDialogOpen] = useState(false);
@@ -81,7 +81,6 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
     const swappableSymbols = new Set(tokens.map(t => t.symbol));
     const portfolioAssets = portfolio.filter(p => swappableSymbols.has(p.symbol) && p.balance > 0);
     
-    // Enrich portfolio assets with token data like address and decimals
     return portfolioAssets.map(asset => {
         const tokenInfo = tokens.find(t => t.symbol === asset.symbol);
         return {
@@ -113,13 +112,11 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
         } else if (usdt) {
             defaultToSymbol = 'USDT';
         } else {
-             // Fallback if USDT/USDC not available
             defaultToSymbol = tokens.find(t => t.symbol !== defaultFromAsset?.symbol)?.symbol;
         }
         
         setToTokenSymbol(defaultToSymbol);
     } else if (tokens.length > 0) {
-        // Fallback if user has no swappable tokens in portfolio
         setFromTokenSymbol('ETH');
         const usdtToken = tokens.find(t => t.symbol === 'USDT');
         if (usdtToken) {
@@ -131,25 +128,23 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
 }, [tokens, portfolioTokens]);
 
 
-  const fetchQuoteAndGas = useCallback(async () => {
+  const fetchQuote = useCallback(async () => {
     if (!fromTokenData || !toTokenData || !debouncedFromAmount || isNaN(parseFloat(debouncedFromAmount)) || disabled || !address || parseFloat(debouncedFromAmount) <= 0) {
       setQuote(null);
-      setGas(null);
       onQuoteResponse({});
-      onGasResponse({});
       return;
     }
 
     setIsFetchingQuote(true);
-    setIsFetchingGas(true);
     setQuoteError(null);
-    setGasError(null);
 
     try {
-        const [quoteResult, gasResult] = await Promise.all([
-            getQuoteAction({ address: fromTokenData.address, decimals: fromTokenData.decimals }, { address: toTokenData.address, decimals: toTokenData.decimals }, debouncedFromAmount),
-            getGasEstimateAction({ address: fromTokenData.address, decimals: fromTokenData.decimals }, { address: toTokenData.address, decimals: toTokenData.decimals }, debouncedFromAmount, address)
-        ]);
+        const quoteResult = await getQuoteAction(
+            { address: fromTokenData.address, decimals: fromTokenData.decimals }, 
+            { address: toTokenData.address, decimals: toTokenData.decimals }, 
+            debouncedFromAmount,
+            address
+        );
         
         onQuoteResponse(quoteResult.raw || { error: quoteResult.error });
         if (quoteResult.error) {
@@ -159,93 +154,78 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
             setQuote(quoteResult.data);
         }
 
-        onGasResponse(gasResult.raw || { error: gasResult.error });
-        if (gasResult.error) {
-            setGasError(gasResult.error);
-            setGas(null);
-        } else if (gasResult.data) {
-            setGas(gasResult.data.gas);
-        }
-
     } catch (e) {
-      const errorMessage = "Failed to fetch quote and gas.";
+      const errorMessage = "Failed to fetch quote.";
       setQuoteError(errorMessage);
-      setGasError(errorMessage);
       setQuote(null);
-      setGas(null);
       onQuoteResponse({ error: errorMessage });
-      onGasResponse({ error: errorMessage });
     } finally {
       setIsFetchingQuote(false);
-      setIsFetchingGas(false);
     }
-  }, [fromTokenData, toTokenData, debouncedFromAmount, disabled, onQuoteResponse, onGasResponse, address]);
+  }, [fromTokenData, toTokenData, debouncedFromAmount, disabled, onQuoteResponse, address]);
 
 
   useEffect(() => {
-    fetchQuoteAndGas();
-  }, [fetchQuoteAndGas]);
+    fetchQuote();
+  }, [fetchQuote]);
 
   const handleFromTokenChange = (symbol: string | undefined) => {
     if (!symbol) return;
     setFromTokenSymbol(symbol);
-    setFromAmount("1.0"); // Reset to default
+    setFromAmount("1.0"); 
   };
 
   const handleSwapTokens = () => {
     const tempFromSymbol = fromTokenSymbol;
     setFromTokenSymbol(toTokenSymbol);
     setToTokenSymbol(tempFromSymbol);
-    setFromAmount("1.0"); // Reset to default
+    setFromAmount("1.0"); 
   };
 
   const handleExecuteSwap = async () => {
-    if (!fromTokenData || !toTokenData || !fromAmount || !address) return;
+    if (!fromTokenData || !toTokenData || !fromAmount || !address || !quote) return;
     
+    const presetData = quote.presets[selectedPreset];
+    if (!presetData) return;
+
     setIsSwapping(true);
-    const swapResult = await getSwapAction(
-      { address: fromTokenData.address, decimals: fromTokenData.decimals, symbol: fromTokenData.symbol },
-      { address: toTokenData.address, decimals: toTokenData.decimals, symbol: toTokenData.symbol },
-      fromAmount,
-      address
-    );
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1500));
     setIsSwapping(false);
 
-    if (swapResult.error) {
-      setQuoteError(swapResult.error);
-      return;
-    }
-
-    // Since this is a simulation, we generate a fake hash and show the success dialog.
-    // In a real app, this would involve sending the transaction (`swapResult.data.tx`)
-    // to the user's wallet to be signed and broadcasted.
-    if (swapResult.data) {
-        const simulatedTxHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
-        setSwapSuccessDetails({
-            quote: swapResult.data!,
-            fromToken: fromTokenData,
-            toToken: toTokenData,
-            fromAmount,
-            txHash: simulatedTxHash,
-            gas: gas,
-        });
-        setIsSwapSuccessDialogOpen(true);
-    }
+    // This is a simulation, we generate a fake hash and show the success dialog.
+    const simulatedTxHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+    setSwapSuccessDetails({
+        quote: quote,
+        preset: presetData,
+        presetName: selectedPreset,
+        fromToken: fromTokenData,
+        toToken: toTokenData,
+        fromAmount,
+        txHash: simulatedTxHash,
+    });
+    setIsSwapSuccessDialogOpen(true);
   };
 
-  const toAmountDisplay = isFetchingQuote ? "..." : (quote?.dstAmount ? parseFloat(quote.dstAmount).toFixed(5) : "");
-  const isFetching = isFetchingQuote || isFetchingGas;
+  const toAmountDisplay = isFetchingQuote ? "..." : (quote?.presets?.[selectedPreset]?.auctionEndAmount ? parseFloat(quote.presets[selectedPreset].auctionEndAmount).toFixed(5) : "0.0");
+  const isFetching = isFetchingQuote;
+
+  const presetOptions = [
+    { id: 'fast', label: 'Fast', icon: Zap, color: 'text-green-500' },
+    { id: 'medium', label: 'Medium', icon: Clock, color: 'text-yellow-500' },
+    { id: 'slow', label: 'Slow', icon: Shield, color: 'text-blue-500' }
+  ] as const;
 
   return (
     <>
-    <Card>
+    <Card className="flex flex-col">
       <CardHeader>
-        <CardTitle className="font-headline">Token Swap</CardTitle>
+        <CardTitle className="font-headline">Token Swap (Fusion)</CardTitle>
         <CardDescription>
-          Find the best rates for your token swaps.
+          Select a preset to get the best rates via 1inch Fusion.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 flex-grow">
         {isConnected && !is1inchApiConfigured && (
            <Alert variant="destructive">
             <Terminal className="h-4 w-4" />
@@ -300,7 +280,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="to-token">To</Label>
+          <Label htmlFor="to-token">To (estimated)</Label>
           <div className="flex gap-2">
             <Select value={toTokenSymbol} onValueChange={setToTokenSymbol} disabled={disabled}>
               <SelectTrigger className="w-[150px]">
@@ -325,55 +305,52 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
             <Input id="to-token" type="number" placeholder="0.0" value={toAmountDisplay} readOnly disabled={disabled}/>
           </div>
         </div>
-
-        {(quoteError) && <Alert variant="destructive"><AlertDescription>{quoteError}</AlertDescription></Alert>}
-
+        
         <div className="space-y-3 pt-2">
-          <h4 className="text-sm font-medium">Optimal Route</h4>
-          <div className="flex items-center justify-between text-sm p-3 rounded-lg bg-secondary/50 min-h-[44px]">
-             {disabled ? <span className="text-muted-foreground">Connect wallet & configure API</span> : 
-              isFetching ? <Loader2 className="w-4 h-4 animate-spin" /> : 
-              quote?.route ? (
-                <div className="flex items-center gap-1.5 font-mono flex-wrap text-xs">
-                  <span>{fromTokenSymbol}</span>
-                  {quote.route.map((hop, hopIndex) => (
-                      <div key={hopIndex} className="flex items-center gap-1.5">
-                          <ChevronsRight className="w-4 h-4 text-muted-foreground" />
-                          <div className="flex items-center gap-1">
-                            {hop.map((part, partIndex) => (
-                                <span key={partIndex}>{part.name}</span>
-                            ))}
-                          </div>
-                      </div>
-                  ))}
-                </div>
-            ) : <span className="text-muted-foreground text-xs">{quoteError ? quoteError : "Enter an amount to see route" }</span>}
-            {!disabled && !isFetching && quote && <span className="text-accent font-semibold">100%</span>}
-          </div>
-           <div className="text-xs text-muted-foreground space-y-1">
-             <div className="flex justify-between">
-                <span>Price:</span>
-                <span className="font-mono">
-                    {isFetching ? '...' : quote && fromAmount && parseFloat(fromAmount) > 0 && toAmountDisplay ? `1 ${fromTokenSymbol} = ${(parseFloat(toAmountDisplay)/parseFloat(fromAmount)).toFixed(4)} ${toTokenSymbol}` : 'N/A'}
-                </span>
-             </div>
-             <div className="flex justify-between">
-                <span>Gas Fee (est.):</span>
-                <span className="font-mono">{isFetchingGas ? '...' : gas ? `~${gas} units` : 'N/A'}</span>
-             </div>
-           </div>
+            <h4 className="text-sm font-medium">Select Speed</h4>
+            <div className="grid grid-cols-3 gap-2">
+                {presetOptions.map(option => {
+                    const presetData = quote?.presets?.[option.id];
+                    const isActive = selectedPreset === option.id;
+                    const isDisabled = !presetData || disabled;
+                    return (
+                        <button
+                            key={option.id}
+                            onClick={() => setSelectedPreset(option.id)}
+                            disabled={isDisabled}
+                            className={cn(
+                                "p-3 rounded-lg border-2 text-left space-y-1 transition-all",
+                                isActive ? "border-primary bg-primary/10" : "border-border hover:border-primary/50",
+                                isDisabled ? "opacity-50 cursor-not-allowed bg-muted/50" : ""
+                            )}
+                        >
+                            <div className="flex items-center gap-2">
+                                <option.icon className={cn("w-5 h-5", isActive ? option.color : "text-muted-foreground")} />
+                                <h5 className="font-semibold">{option.label}</h5>
+                            </div>
+                            <p className={cn("text-xs font-mono", isActive ? "text-primary" : "text-muted-foreground")}>
+                                {isFetchingQuote ? <Loader2 className="w-4 h-4 animate-spin"/> : presetData ? `~${(parseFloat(presetData.auctionEndAmount) / parseFloat(fromAmount || "1")).toFixed(4)}` : "N/A"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                                {isFetchingQuote ? '...' : presetData ? `${presetData.auctionDuration}s` : ''}
+                            </p>
+                        </button>
+                    )
+                })}
+            </div>
         </div>
-
-
+        {(quoteError) && <Alert variant="destructive"><AlertDescription>{quoteError}</AlertDescription></Alert>}
+      </CardContent>
+      <CardFooter className="mt-auto">
         <Button
           size="lg"
           className="w-full font-bold"
           onClick={handleExecuteSwap}
-          disabled={isSwapping || isFetching || !quote || !fromAmount || disabled}
+          disabled={isSwapping || isFetching || !quote || !fromAmount || disabled || !quote?.presets?.[selectedPreset]}
         >
-          {isSwapping ? <><Loader2 className="animate-spin mr-2" />Swapping...</> : isFetching ? <><Loader2 className="mr-2 animate-spin" />Fetching...</> : "Swap (Simulated)"}
+          {isSwapping ? <><Loader2 className="animate-spin mr-2" />Swapping...</> : isFetching ? <><Loader2 className="mr-2 animate-spin" />Fetching Quote...</> : "Swap (Simulated)"}
         </Button>
-      </CardContent>
+      </CardFooter>
     </Card>
 
     {swapSuccessDetails && (
@@ -382,7 +359,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
                 <AlertDialogHeader>
                 <AlertDialogTitle>Swap Successful (Simulated)</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Your simulated token swap was executed successfully. Here are the details.
+                    Your simulated 1inch Fusion swap was executed. Here are the details for the '{swapSuccessDetails.presetName}' preset.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <div className="text-sm space-y-4">
@@ -394,33 +371,21 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
                         <ArrowDown className="w-6 h-6 text-muted-foreground bg-background p-1 rounded-full border" />
                     </div>
                     <div className="flex justify-between items-center bg-secondary/50 p-3 rounded-md">
-                        <span className="text-muted-foreground">To</span>
-                        <span className="font-bold text-lg text-accent">{parseFloat(swapSuccessDetails.quote.dstAmount).toFixed(5)} {swapSuccessDetails.toToken.symbol}</span>
+                        <span className="text-muted-foreground">To (est.)</span>
+                        <span className="font-bold text-lg text-accent">{parseFloat(swapSuccessDetails.preset.auctionEndAmount).toFixed(5)} {swapSuccessDetails.toToken.symbol}</span>
                     </div>
                     <div className="space-y-2 text-xs border-t pt-4">
+                        <div className="flex justify-between">
+                            <span className="text-muted-foreground">Quote ID:</span>
+                            <span className="font-mono truncate max-w-[180px]">{swapSuccessDetails.quote.quoteId}</span>
+                        </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Transaction Hash:</span>
                             <span className="font-mono truncate max-w-[180px]">{swapSuccessDetails.txHash}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-muted-foreground">Est. Gas Fee:</span>
-                            <span className="font-mono">{swapSuccessDetails.gas ? `~${swapSuccessDetails.gas} units` : 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between items-start">
-                            <span className="text-muted-foreground pt-0.5">Route:</span>
-                            <div className="flex items-center gap-1.5 font-mono flex-wrap text-right max-w-[240px] justify-end">
-                                <span>{swapSuccessDetails.fromToken.symbol}</span>
-                                {swapSuccessDetails.quote?.route?.map((hop, hopIndex) => (
-                                    <div key={hopIndex} className="flex items-center gap-1.5">
-                                        <ChevronsRight className="w-4 h-4 text-muted-foreground" />
-                                        <div className="flex items-center gap-1">
-                                        {hop.map((part, partIndex) => (
-                                            <span key={partIndex}>{part.name}</span>
-                                        ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                            <span className="text-muted-foreground">Auction Duration:</span>
+                            <span className="font-mono">{swapSuccessDetails.preset.auctionDuration}s</span>
                         </div>
                     </div>
                 </div>

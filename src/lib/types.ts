@@ -1,4 +1,5 @@
 
+
 export type Asset = {
   id: string | number;
   name: string;
@@ -34,3 +35,24 @@ export type SwapTransaction = {
 export type Swap = Quote & {
     tx: SwapTransaction;
 }
+
+
+// 1inch Fusion Types
+export type FusionPreset = {
+    auctionDuration: number;
+    auctionStartAmount: string;
+    auctionEndAmount: string;
+    startAmount: string;
+    points: [number, number][];
+};
+
+export type FusionQuote = {
+    quoteId: string;
+    srcTokenAmount: string;
+    dstTokenAmount: string;
+    presets: {
+        fast: FusionPreset;
+        medium: FusionPreset;
+        slow: FusionPreset;
+    };
+};
