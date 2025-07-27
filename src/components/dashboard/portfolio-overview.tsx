@@ -98,7 +98,7 @@ export function PortfolioOverview({ assets = [], loading, isMoralisApiConfigured
                          <Image src={asset.icon} alt={`${asset.name} logo`} width={32} height={32} className="rounded-full" />
                       ) : (
                         <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center font-bold text-muted-foreground">
-                          {asset.symbol.charAt(0)}
+                          {asset.symbol ? asset.symbol.charAt(0) : '?'}
                         </div>
                       )}
                       <div>
