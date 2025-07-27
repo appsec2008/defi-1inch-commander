@@ -79,7 +79,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
   
   const portfolioTokens = useMemo(() => {
     const swappableSymbols = new Set(tokens.map(t => t.symbol));
-    const portfolioAssets = portfolio.filter(p => swappableSymbols.has(p.symbol));
+    const portfolioAssets = portfolio.filter(p => swappableSymbols.has(p.symbol) && p.balance > 0);
     
     // Enrich portfolio assets with token data like address and decimals
     return portfolioAssets.map(asset => {
@@ -88,8 +88,9 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
             ...asset,
             address: tokenInfo?.address || '',
             decimals: tokenInfo?.decimals || 18,
+            value: asset.balance * asset.price,
         };
-    }).sort((a,b) => (b.balance * b.price) - (a.balance * a.price));
+    }).sort((a,b) => b.value - a.value);
 
   }, [tokens, portfolio]);
 
@@ -100,27 +101,29 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
     if (portfolioTokens.length > 0) {
         const defaultFromAsset = portfolioTokens[0];
         if (defaultFromAsset?.symbol) {
-             handleFromTokenChange(defaultFromAsset.symbol);
+             setFromTokenSymbol(defaultFromAsset.symbol);
         }
 
         let defaultToSymbol: string | undefined;
-        if (defaultFromAsset?.symbol === 'USDT') {
-            defaultToSymbol = tokens.find(t => t.symbol === 'USDC')?.symbol;
+        const usdt = tokens.find(t => t.symbol === 'USDT');
+        const usdc = tokens.find(t => t.symbol === 'USDC');
+        
+        if (defaultFromAsset?.symbol === 'USDT' && usdc) {
+            defaultToSymbol = 'USDC';
+        } else if (usdt) {
+            defaultToSymbol = 'USDT';
         } else {
-            defaultToSymbol = tokens.find(t => t.symbol === 'USDT')?.symbol;
-        }
-    
-        if (!defaultToSymbol || defaultToSymbol === defaultFromAsset?.symbol) {
+             // Fallback if USDT/USDC not available
             defaultToSymbol = tokens.find(t => t.symbol !== defaultFromAsset?.symbol)?.symbol;
         }
         
         setToTokenSymbol(defaultToSymbol);
     } else if (tokens.length > 0) {
         // Fallback if user has no swappable tokens in portfolio
-        handleFromTokenChange('ETH');
+        setFromTokenSymbol('ETH');
         setToTokenSymbol('USDT');
     }
-}, [portfolioTokens, tokens]);
+}, [tokens, portfolioTokens]);
 
 
   const fetchQuoteAndGas = useCallback(async () => {
@@ -181,23 +184,14 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
   const handleFromTokenChange = (symbol: string | undefined) => {
     if (!symbol) return;
     setFromTokenSymbol(symbol);
-    const asset = portfolio.find(a => a.symbol === symbol);
-    if (asset) {
-      setFromAmount(asset.balance.toString());
-    } else {
-      setFromAmount("1.0"); // Reset to default if token not in portfolio
-    }
+    setFromAmount("1.0"); // Reset to default
   };
 
   const handleSwapTokens = () => {
     const tempFromSymbol = fromTokenSymbol;
-    const tempToSymbol = toTokenSymbol;
-    
-    // Swap symbols
+    setFromTokenSymbol(toTokenSymbol);
     setToTokenSymbol(tempFromSymbol);
-
-    // This will also trigger the amount update
-    handleFromTokenChange(tempToSymbol);
+    setFromAmount("1.0"); // Reset to default
   };
 
   const handleExecuteSwap = async () => {
@@ -322,7 +316,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
           </div>
         </div>
 
-        {(quoteError || gasError) && <Alert variant="destructive"><AlertDescription>{quoteError || gasError}</AlertDescription></Alert>}
+        {(quoteError) && <Alert variant="destructive"><AlertDescription>{quoteError}</AlertDescription></Alert>}
 
         <div className="space-y-3 pt-2">
           <h4 className="text-sm font-medium">Optimal Route</h4>
