@@ -12,9 +12,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAccount } from "wagmi";
 import { useEffect, useState, useCallback } from "react";
 import type { Asset, Token } from "@/lib/types";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+
 
 export default function Home() {
-  const { address, isConnected } = useAccount();
+  const { address: walletAddress, isConnected: isWalletConnected } = useAccount();
+  const [addressSource, setAddressSource] = useState<'wallet' | 'hardcoded'>('wallet');
+  
   const [portfolioAssets, setPortfolioAssets] = useState<Asset[]>([]);
   const [tokens, setTokens] = useState<Token[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +27,9 @@ export default function Home() {
   const [apiQuoteResponse, setApiQuoteResponse] = useState({});
   const [apiGasResponse, setApiGasResponse] = useState({});
 
+  const testAddress = '0xdac17f958d2ee523a2206206994597c13d831ec7';
+  const isConnected = addressSource === 'hardcoded' || isWalletConnected;
+  const address = addressSource === 'hardcoded' ? testAddress : walletAddress;
 
   // These checks are for UI feedback only. The actual API calls use server-side keys.
   const is1inchApiConfigured = !!process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
@@ -104,17 +112,37 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-1 p-4 sm:p-6 md:p-8">
+        <div className="max-w-7xl mx-auto mb-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Connection Mode</CardTitle>
+                    <CardDescription>Select a wallet source for testing and development.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <RadioGroup value={addressSource} onValueChange={(value) => setAddressSource(value as 'wallet' | 'hardcoded')}>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="wallet" id="wallet" />
+                            <Label htmlFor="wallet">Connect Wallet</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="hardcoded" id="hardcoded" />
+                            <Label htmlFor="hardcoded">Use Test Address ({testAddress})</Label>
+                        </div>
+                    </RadioGroup>
+                </CardContent>
+            </Card>
+        </div>
         {!isConnected && (
            <Card className="mb-6">
             <CardHeader>
               <CardTitle>Welcome to DeFi Commander</CardTitle>
-              <CardDescription>Connect your wallet to get started.</CardDescription>
+              <CardDescription>Connect your wallet or select the test address to get started.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center justify-center text-center p-8">
                <Wallet className="w-16 h-16 text-primary mb-4" />
-               <h3 className="text-lg font-semibold mb-2">Please Connect Your Wallet</h3>
+               <h3 className="text-lg font-semibold mb-2">Please Connect Your Wallet or Use Test Mode</h3>
                <p className="text-muted-foreground mb-4 max-w-md">
-                 To view your portfolio, analyze risks, and swap tokens, you need to connect a crypto wallet.
+                 To view your portfolio, analyze risks, and swap tokens, you need to connect a crypto wallet or select the test address option above.
                </p>
              </CardContent>
            </Card>
