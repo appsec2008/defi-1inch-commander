@@ -58,14 +58,16 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
                 value: asset.balance * asset.price,
             }));
         
+        // Pass the raw JSON objects directly, not stringified versions.
+        // Genkit will handle the injection into the prompt template.
         const analysisInput = {
-            portfolio: JSON.stringify(portfolioResult.response, null, 2),
-            history: JSON.stringify(historyResult.response, null, 2),
-            tokens: JSON.stringify(tokensResult.tokens, null, 2),
-            liquiditySources: JSON.stringify(liquiditySourcesResult.response, null, 2),
-            presets: JSON.stringify(presetsResult.response, null, 2),
-            health: JSON.stringify(healthResult.response, null, 2),
-            topTokenHoldings: JSON.stringify(topHoldings, null, 2),
+            portfolio: portfolioResult.response,
+            history: historyResult.response,
+            tokens: tokensResult.tokens.slice(0, 100), // Truncate for a reasonable prompt size
+            liquiditySources: liquiditySourcesResult.response,
+            presets: presetsResult.response,
+            health: healthResult.response,
+            topTokenHoldings: topHoldings,
         };
         
         console.log("Preparation complete. Returning data to client.");

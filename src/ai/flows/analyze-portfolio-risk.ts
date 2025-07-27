@@ -12,13 +12,13 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const AnalyzePortfolioRiskInputSchema = z.object({
-  portfolio: z.string().describe("A JSON string from the 1inch Portfolio API, showing the user's assets as seen by 1inch."),
-  history: z.string().describe("A JSON string from the 1inch History API, detailing the user's past transaction events."),
-  tokens: z.string().describe("A JSON string from the 1inch Token API, listing all swappable tokens on the network."),
-  liquiditySources: z.string().describe("A JSON string from the 1inch Liquidity Sources API, showing available trading protocols."),
-  presets: z.string().describe("A JSON string from the 1inch Presets API, detailing network routing configurations."),
-  health: z.string().describe("A JSON string from the 1inch Health Check API, indicating the status of the network services."),
-  topTokenHoldings: z.string().describe('A focused JSON string of the top 5 token holdings by value from the user\'s wallet, including symbol, name, balance, and price. This data comes from the Moralis API.'),
+  portfolio: z.any().describe("A JSON object from the 1inch Portfolio API, showing the user's assets as seen by 1inch."),
+  history: z.any().describe("A JSON object from the 1inch History API, detailing the user's past transaction events."),
+  tokens: z.any().describe("A JSON array from the 1inch Token API, listing all swappable tokens on the network."),
+  liquiditySources: z.any().describe("A JSON object from the 1inch Liquidity Sources API, showing available trading protocols."),
+  presets: z.any().describe("A JSON object from the 1inch Presets API, detailing network routing configurations."),
+  health: z.any().describe("A JSON object from the 1inch Health Check API, indicating the status of the network services."),
+  topTokenHoldings: z.any().describe('A focused JSON array of the top 5 token holdings by value from the user\'s wallet, including symbol, name, balance, and price. This data comes from the Moralis API.'),
 });
 export type AnalyzePortfolioRiskInput = z.infer<typeof AnalyzePortfolioRiskInputSchema>;
 
@@ -41,44 +41,44 @@ export const prompt = ai.definePrompt({
 You will be given several pieces of data, each from a specific 1inch API endpoint. Use all of this information to build a complete picture of the user's context and the market.
 
 **1. 1inch Portfolio API Data:**
-This JSON shows the user's wallet balances from the 1inch perspective.
+This JSON object shows the user's wallet balances from the 1inch perspective.
 \`\`\`json
-{{{portfolio}}}
+{{{json portfolio}}}
 \`\`\`
 
 **2. 1inch History API Data:**
-This JSON lists the user's recent transaction history. Analyze it for trading frequency, patterns, and risk tolerance.
+This JSON object lists the user's recent transaction history. Analyze it for trading frequency, patterns, and risk tolerance.
 \`\`\`json
-{{{history}}}
+{{{json history}}}
 \`\`\`
 
 **3. 1inch Tokens API Data:**
-This JSON provides a list of all swappable tokens on the network. Use this for general market context.
+This JSON array provides a list of all swappable tokens on the network. Use this for general market context.
 \`\`\`json
-{{{tokens}}}
+{{{json tokens}}}
 \`\`\`
 
 **4. 1inch Liquidity Sources & Presets API Data:**
 These JSON objects detail the available trading protocols and routing configurations on the network.
 Liquidity Sources:
 \`\`\`json
-{{{liquiditySources}}}
+{{{json liquiditySources}}}
 \`\`\`
 Presets:
 \`\`\`json
-{{{presets}}}
+{{{json presets}}}
 \`\`\`
 
 **5. 1inch Health Check API Data:**
-This JSON shows the current operational status of the 1inch APIs.
+This JSON object shows the current operational status of the 1inch APIs.
 \`\`\`json
-{{{health}}}
+{{{json health}}}
 \`\`\`
 
 **6. User's Top 5 Token Holdings (from Moralis API):**
-This is the most important data for your specific recommendations. This JSON shows the user's most significant assets by value.
+This is the most important data for your specific recommendations. This JSON array shows the user's most significant assets by value.
 \`\`\`json
-{{{topTokenHoldings}}}
+{{{json topTokenHoldings}}}
 \`\`\`
 
 **Your Task:**
