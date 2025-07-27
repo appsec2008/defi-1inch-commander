@@ -89,9 +89,14 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
     tokenAddressesToPrice.push(WETH_ADDRESS);
   }
   
-  // Fetch prices for all collected addresses
-  const { prices: priceMap, raw: rawPrices } = await getSpotPrices(tokenAddressesToPrice);
-  rawResponses.spotPrices = rawPrices;
+  // Fetch prices for all collected addresses if there are any to fetch
+  let priceMap: { [key: string]: number } = {};
+  if (tokenAddressesToPrice.length > 0) {
+      const { prices, raw: rawPrices } = await getSpotPrices(tokenAddressesToPrice);
+      rawResponses.spotPrices = rawPrices;
+      priceMap = prices;
+  }
+
 
   // Get the price for native ETH using the WETH address as a proxy
   const ethPrice = priceMap[WETH_ADDRESS.toLowerCase()] || 0;
@@ -136,4 +141,3 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
 
   return { assets: valuableAssets, raw: rawResponses };
 }
-

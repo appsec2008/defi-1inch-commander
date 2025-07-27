@@ -26,6 +26,7 @@ export default function Home() {
   const [apiTokensResponse, setApiTokensResponse] = useState({});
   const [apiQuoteResponse, setApiQuoteResponse] = useState({});
   const [apiGasResponse, setApiGasResponse] = useState({});
+  const [apiSpotPricesResponse, setApiSpotPricesResponse] = useState({});
 
   const testAddress = '0xdac17f958d2ee523a2206206994597c13d831ec7';
   const isConnected = addressSource === 'hardcoded' || isWalletConnected;
@@ -68,6 +69,10 @@ export default function Home() {
         if (portfolioResult.assets) {
             setPortfolioAssets(portfolioResult.assets);
         }
+        if (portfolioResult.raw?.spotPrices) {
+            setApiSpotPricesResponse(portfolioResult.raw.spotPrices);
+        }
+
         if (tokensResult.tokens) {
             setTokens(tokensResult.tokens);
         }
@@ -82,6 +87,7 @@ export default function Home() {
         setApiTokensResponse({});
         setApiQuoteResponse({});
         setApiGasResponse({});
+        setApiSpotPricesResponse({});
       }
     }
     fetchData();
@@ -179,14 +185,14 @@ export default function Home() {
                     apiTokensResponse
                 )}
                 {renderApiResponseCard(
+                    "1inch Spot Price API",
+                    "Fetches prices for tokens in the portfolio.",
+                    apiSpotPricesResponse
+                )}
+                {renderApiResponseCard(
                     "1inch Quote API",
                     "Fetches a real-time swap quote.",
                     apiQuoteResponse
-                )}
-                {renderApiResponseCard(
-                    "1inch Swap API (for Gas)",
-                    "Fetches transaction data to estimate gas.",
-                    apiGasResponse
                 )}
             </div>
         )}
