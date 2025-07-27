@@ -39,6 +39,7 @@ type AnalysisResult = {
 
 type PreparedData = {
     analysisInput: any;
+    raw: any;
 } | null;
 
 // A simple markdown renderer
@@ -99,11 +100,11 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
     setIsLoading(true);
     setError(null);
     setResult(null);
-    setPreparedData(null); // Close the dialog by clearing data
-
+    onAnalysisResponse({ raw: preparedData.raw }); // Show raw data for individual cards
+    
     try {
       const analysisResult = await executeComprehensiveRiskAnalysis(preparedData);
-      onAnalysisResponse(analysisResult.raw || {});
+      onAnalysisResponse({ raw: preparedData.raw, ai: analysisResult.raw });
 
       if (analysisResult.error) {
         setError(analysisResult.error);
@@ -114,6 +115,7 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
       setError("An unexpected error occurred during execution.");
     } finally {
       setIsLoading(false);
+      setIsConfirmDialogOpen(false); // Close the dialog
     }
   };
 
@@ -160,7 +162,7 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
           </div>
         )}
 
-        {isLoading && !result && (
+        {isLoading && !result && !isConfirmDialogOpen && (
           <div className="flex flex-col items-center justify-center text-center p-8">
             <Loader2 className="w-16 h-16 text-primary animate-spin mb-4" />
             <h3 className="text-lg font-semibold">Analyzing Portfolio...</h3>

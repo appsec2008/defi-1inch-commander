@@ -28,6 +28,15 @@ export default function Home() {
   const [apiGasResponse, setApiGasResponse] = useState({});
   const [apiSpotPricesResponse, setApiSpotPricesResponse] = useState({});
   const [apiRiskAnalysisResponse, setApiRiskAnalysisResponse] = useState({});
+  
+  // States for individual 1inch API calls for AI context
+  const [apiAiPortfolioResponse, setApiAiPortfolioResponse] = useState({});
+  const [apiAiHistoryResponse, setApiAiHistoryResponse] = useState({});
+  const [apiAiTokensResponse, setApiAiTokensResponse] = useState({});
+  const [apiAiLiquidityResponse, setApiAiLiquidityResponse] = useState({});
+  const [apiAiPresetsResponse, setApiAiPresetsResponse] = useState({});
+  const [apiAiHealthResponse, setApiAiHealthResponse] = useState({});
+
 
   const testAddress = '0xdac17f958d2ee523a2206206994597c13d831ec7';
   const isConnected = addressSource === 'hardcoded' || isWalletConnected;
@@ -46,7 +55,13 @@ export default function Home() {
   }, []);
 
   const handleAnalysisResponse = useCallback((response: any) => {
-    setApiRiskAnalysisResponse(response || {});
+    setApiRiskAnalysisResponse(response?.ai || {});
+    setApiAiPortfolioResponse(response?.raw?.portfolio || {});
+    setApiAiHistoryResponse(response?.raw?.history || {});
+    setApiAiTokensResponse(response?.raw?.tokens || {});
+    setApiAiLiquidityResponse(response?.raw?.liquiditySources || {});
+    setApiAiPresetsResponse(response?.raw?.presets || {});
+    setApiAiHealthResponse(response?.raw?.health || {});
   }, []);
 
   useEffect(() => {
@@ -101,7 +116,7 @@ export default function Home() {
 
   const renderApiResponseCard = (title: string, description: string, data: any) => {
     const isAiCard = title === "AI Risk Assessment";
-    const requestData = isAiCard ? data?.request?.fullPrompt : JSON.stringify(data?.request || {}, null, 2);
+    const requestData = isAiCard ? data?.request : JSON.stringify(data?.request || {}, null, 2);
     const responseData = isAiCard ? data?.response : (data?.response || data || {});
     
     return (
@@ -114,7 +129,7 @@ export default function Home() {
             <h4 className="text-sm font-semibold mb-2">Request</h4>
             <ScrollArea className="h-[200px] w-full bg-secondary/50 rounded-md p-4 mb-4">
                 <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
-                    {isAiCard ? requestData : JSON.stringify(data?.request || {}, null, 2)}
+                    {isAiCard ? JSON.stringify(requestData, null, 2) : JSON.stringify(data?.request || {}, null, 2)}
                 </pre>
             </ScrollArea>
 
@@ -197,28 +212,63 @@ export default function Home() {
           </div>
         </div>
         {isConnected && (
-            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+            <>
+            <div className="max-w-7xl mx-auto mt-6">
+                <h2 className="text-xl font-bold font-headline mb-4">Swap API Responses</h2>
+            </div>
+            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {renderApiResponseCard(
+                    "1inch Quote API",
+                    "Fetches a real-time swap quote. Used in the Token Swap component.",
+                    apiQuoteResponse
+                )}
+                {renderApiResponseCard(
+                    "Moralis Spot Price API",
+                    "Fetches token prices for the portfolio overview.",
+                    apiSpotPricesResponse
+                )}
+            </div>
+            <div className="max-w-7xl mx-auto mt-6">
+                <h2 className="text-xl font-bold font-headline mb-4">AI Risk Assessment API Responses</h2>
+            </div>
+            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {renderApiResponseCard(
                     "AI Risk Assessment",
                     "The context sent to the AI and its generated response.",
                     apiRiskAnalysisResponse
                 )}
                 {renderApiResponseCard(
-                    "1inch Tokens API",
-                    "Fetches a list of all swappable tokens.",
-                    apiTokensResponse
+                    "1inch AI: Portfolio API",
+                    "Fetches a user's wallet overview from the 1inch perspective.",
+                    apiAiPortfolioResponse
                 )}
-                {renderApiResponseCard(
-                    "1inch Spot Price API",
-                    "Fetches prices for tokens in the portfolio.",
-                    apiSpotPricesResponse
+                 {renderApiResponseCard(
+                    "1inch AI: History API",
+                    "Fetches a user's transaction history.",
+                    apiAiHistoryResponse
                 )}
-                {renderApiResponseCard(
-                    "1inch Quote API",
-                    "Fetches a real-time swap quote.",
-                    apiQuoteResponse
+                 {renderApiResponseCard(
+                    "1inch AI: Tokens API",
+                    "Fetches the list of all swappable tokens.",
+                    apiAiTokensResponse
+                )}
+                 {renderApiResponseCard(
+                    "1inch AI: Liquidity Sources API",
+                    "Fetches the available liquidity sources on the network.",
+                    apiAiLiquidityResponse
+                )}
+                 {renderApiResponseCard(
+                    "1inch AI: Presets API",
+                    "Fetches the network presets for routing.",
+                    apiAiPresetsResponse
+                )}
+                 {renderApiResponseCard(
+                    "1inch AI: Health Check API",
+                    "Checks the status of the 1inch network APIs.",
+                    apiAiHealthResponse
                 )}
             </div>
+            </>
         )}
       </main>
     </div>

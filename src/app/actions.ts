@@ -42,23 +42,22 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
         ].filter(result => !!result.error);
 
         if (errors.length > 0) {
-            console.warn("One or more API calls failed during data preparation:", errors);
+            console.warn("One or more API calls failed during data preparation:", errors.map(e => `${e.name}: ${e.error}`).join(', '));
         }
 
         console.log("Successfully fetched all data. Formatting context...");
 
-        // Extract clean data instead of raw API responses, handling potential failures
-        const context = {
+        // Extract clean data for the AI, handling potential failures
+        const contextForAi = {
             portfolio: portfolioResult.error ? { error: portfolioResult.error } : portfolioResult.response,
             history: historyResult.error ? { error: historyResult.error } : historyResult.response,
-            tokens: tokensResult.error ? { error: tokensResult.error } : tokensResult.tokens, 
+            tokens: tokensResult.error ? { error: tokensResult.error } : tokensResult.tokens,
             liquiditySources: liquiditySourcesResult.error ? { error: liquiditySourcesResult.error } : liquiditySourcesResult.response,
             presets: presetsResult.error ? { error: presetsResult.error } : presetsResult.response,
             health: healthResult.error ? { error: healthResult.error } : healthResult.response,
         };
 
-        // Identify top 5 token holdings by value
-        const topHoldings = moralisPortfolioResult.assets
+        const topHoldings = (moralisPortfolioResult.assets || [])
             .sort((a, b) => (b.balance * b.price) - (a.balance * a.price))
             .slice(0, 5)
             .map(asset => ({
@@ -69,7 +68,7 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
                 value: asset.balance * asset.price,
             }));
         
-        const portfolioDataString = JSON.stringify(context, null, 2);
+        const portfolioDataString = JSON.stringify(contextForAi, null, 2);
         const topHoldingsString = JSON.stringify(topHoldings, null, 2);
 
         const analysisInput = {
@@ -81,6 +80,14 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
         return { 
             data: {
                 analysisInput: analysisInput,
+                raw: {
+                    portfolio: portfolioResult,
+                    history: historyResult,
+                    tokens: tokensResult,
+                    liquiditySources: liquiditySourcesResult,
+                    presets: presetsResult,
+                    health: healthResult,
+                }
             },
             error: null
         };
