@@ -75,7 +75,7 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
   const assets: Asset[] = [];
   const tokenAddressesToPrice: string[] = [];
 
-  // Collect ERC20 token addresses
+  // Collect ERC20 token addresses from the portfolio
   if (erc20BalancesData && !erc20BalancesResult.error && Array.isArray(erc20BalancesData)) {
     erc20BalancesData.forEach((token: any) => {
       if (token.token_address) {
@@ -84,13 +84,16 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
     });
   }
   
-  // Add WETH to get native ETH price
-  tokenAddressesToPrice.push(WETH_ADDRESS);
+  // Add WETH to get native ETH price, if it's not already in the list
+  if (!tokenAddressesToPrice.includes(WETH_ADDRESS)) {
+    tokenAddressesToPrice.push(WETH_ADDRESS);
+  }
   
+  // Fetch prices for all collected addresses
   const { prices: priceMap, raw: rawPrices } = await getSpotPrices(tokenAddressesToPrice);
   rawResponses.spotPrices = rawPrices;
 
-
+  // Get the price for native ETH using the WETH address as a proxy
   const ethPrice = priceMap[WETH_ADDRESS.toLowerCase()] || 0;
 
   // Process native ETH balance
@@ -101,7 +104,7 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
             id: 'eth-native',
             name: 'Ethereum',
             symbol: 'ETH',
-            icon: 'https://cdn.moralis.io/eth/0x.png',
+            icon: 'https://cdn.moralis.io/eth/0x.png', // Default ETH icon
             balance: ethBalance,
             price: ethPrice,
             change24h: 0, // 1inch spot price doesn't include 24h change
@@ -113,6 +116,7 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
   if (erc20BalancesData && !erc20BalancesResult.error && Array.isArray(erc20BalancesData)) {
     assets.push(...erc20BalancesData.map((asset: any) => {
         const balance = Number(asset.balance) / (10 ** Number(asset.decimals));
+        // Find the price from the map fetched earlier
         const price = priceMap[asset.token_address.toLowerCase()] || 0;
 
         return {
@@ -128,7 +132,8 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
   }
 
   // Filter out assets with zero or negligible value
-  const valuableAssets = assets.filter(asset => asset.balance * asset.price > 0.01);
+  const valuableAssets = assets.filter(asset => (asset.balance * asset.price) > 0.01);
 
   return { assets: valuableAssets, raw: rawResponses };
 }
+
