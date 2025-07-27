@@ -39,6 +39,7 @@ type AnalysisResult = {
 
 type PreparedData = {
     analysisInput: any;
+    fullPromptForDisplay: string;
     raw: any;
 } | null;
 
@@ -228,7 +229,7 @@ export function RiskAssessment({ address, portfolio = [], disabled, onAnalysisRe
             </AlertDialogHeader>
             <ScrollArea className="h-[50vh] w-full bg-secondary/50 rounded-md p-4 border">
                 <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
-                    {JSON.stringify(preparedData?.analysisInput, null, 2)}
+                    {preparedData?.fullPromptForDisplay || JSON.stringify(preparedData?.analysisInput, null, 2)}
                 </pre>
             </ScrollArea>
             <AlertDialogFooter>

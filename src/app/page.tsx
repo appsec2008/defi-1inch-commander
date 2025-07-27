@@ -26,7 +26,7 @@ export default function Home() {
   const [apiTokensResponse, setApiTokensResponse] = useState({});
   const [apiQuoteResponse, setApiQuoteResponse] = useState({});
   const [apiGasResponse, setApiGasResponse] = useState({});
-  const [apiSpotPricesResponse, setApiSpotPricesResponse] = useState({});
+  const [apiPortfolioResponse, setApiPortfolioResponse] = useState({});
   const [apiRiskAnalysisResponse, setApiRiskAnalysisResponse] = useState({});
   
   // States for individual 1inch API calls for AI context
@@ -34,7 +34,7 @@ export default function Home() {
   const [apiAiTokensResponse, setApiAiTokensResponse] = useState({});
   const [apiAiLiquidityResponse, setApiAiLiquidityResponse] = useState({});
   const [apiAiPresetsResponse, setApiAiPresetsResponse] = useState({});
-  const [apiAiHealthResponse, setApiAiHealthResponse] = useState({});
+  const [apiAiPortfolioResponse, setApiAiPortfolioResponse] = useState({});
 
 
   const testAddress = '0x5555555555555555555555555555555555555555';
@@ -43,7 +43,6 @@ export default function Home() {
 
   // These checks are for UI feedback only. The actual API calls use server-side keys.
   const is1inchApiConfigured = !!process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
-  const isMoralisApiConfigured = true; // Moralis is no longer used for portfolio, so we can set this to true
   
   const handleQuoteResponse = useCallback((response: any) => {
     setApiQuoteResponse(response || {});
@@ -56,10 +55,9 @@ export default function Home() {
   const handleAnalysisResponse = useCallback((response: any) => {
     setApiRiskAnalysisResponse(response?.ai || {});
     setApiAiHistoryResponse(response?.raw?.history || {});
-    setApiAiTokensResponse(response?.raw?.tokens || {});
     setApiAiLiquidityResponse(response?.raw?.liquiditySources || {});
     setApiAiPresetsResponse(response?.raw?.presets || {});
-    setApiAiHealthResponse(response?.raw?.health || {});
+    setApiAiPortfolioResponse(response?.raw?.portfolio || {});
   }, []);
 
   useEffect(() => {
@@ -82,8 +80,8 @@ export default function Home() {
         if (portfolioResult.assets) {
             setPortfolioAssets(portfolioResult.assets);
         }
-        if (portfolioResult.raw?.spotPrices) {
-            setApiSpotPricesResponse(portfolioResult.raw.spotPrices);
+        if (portfolioResult.raw) {
+            setApiPortfolioResponse(portfolioResult.raw);
         }
 
         if (tokensResult.tokens) {
@@ -100,13 +98,13 @@ export default function Home() {
         setApiTokensResponse({});
         setApiQuoteResponse({});
         setApiGasResponse({});
-        setApiSpotPricesResponse({});
+        setApiPortfolioResponse({});
         setApiRiskAnalysisResponse({});
         setApiAiHistoryResponse({});
         setApiAiTokensResponse({});
         setApiAiLiquidityResponse({});
         setApiAiPresetsResponse({});
-        setApiAiHealthResponse({});
+        setApiAiPortfolioResponse({});
       }
     }
     fetchData();
@@ -124,12 +122,16 @@ export default function Home() {
             <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
-            <h4 className="text-sm font-semibold mb-2">Request</h4>
-            <ScrollArea className="h-[200px] w-full bg-secondary/50 rounded-md p-4 mb-4">
-                <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
-                    {JSON.stringify(requestData, null, 2)}
-                </pre>
-            </ScrollArea>
+            {isAiCard && requestData && (
+                <>
+                <h4 className="text-sm font-semibold mb-2">Request</h4>
+                <ScrollArea className="h-[200px] w-full bg-secondary/50 rounded-md p-4 mb-4">
+                    <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
+                        {JSON.stringify(requestData, null, 2)}
+                    </pre>
+                </ScrollArea>
+                </>
+            )}
 
             <h4 className="text-sm font-semibold mb-2">Response</h4>
             <ScrollArea className="h-[300px] w-full bg-secondary/50 rounded-md p-4">
@@ -222,9 +224,9 @@ export default function Home() {
                     apiQuoteResponse
                 )}
                 {renderApiResponseCard(
-                    "1inch Spot Price API",
-                    "Fetches token prices for the portfolio overview.",
-                    apiSpotPricesResponse
+                    "1inch Portfolio API",
+                    "Fetches token balances and prices for the portfolio overview.",
+                    apiPortfolioResponse
                 )}
             </div>
             <div className="max-w-7xl mx-auto mt-6">
@@ -242,11 +244,6 @@ export default function Home() {
                     apiAiHistoryResponse
                 )}
                  {renderApiResponseCard(
-                    "1inch AI: Tokens API",
-                    "Fetches the list of all swappable tokens.",
-                    apiAiTokensResponse
-                )}
-                 {renderApiResponseCard(
                     "1inch AI: Liquidity Sources API",
                     "Fetches the available liquidity sources on the network.",
                     apiAiLiquidityResponse
@@ -255,11 +252,6 @@ export default function Home() {
                     "1inch AI: Presets API",
                     "Fetches the network presets for routing.",
                     apiAiPresetsResponse
-                )}
-                 {renderApiResponseCard(
-                    "1inch AI: Health Check API",
-                    "Checks the status of the 1inch network APIs.",
-                    apiAiHealthResponse
                 )}
             </div>
             </>

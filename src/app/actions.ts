@@ -6,23 +6,62 @@ import { formatUnits, parseUnits } from 'viem';
 import { estimateGas } from '@/services/ethers';
 
 
+const PROMPT_TEMPLATE_FOR_DISPLAY = `You are an expert portfolio risk analyst and crypto trading strategist. Your goal is to provide a clear, actionable analysis for the user based on the data provided.
+
+You will be given several pieces of data, each from a specific 1inch API endpoint. Use all of this information to build a complete picture of the user's context and the market.
+
+**1. User's Top Token Holdings (Derived from 1inch Balance API):**
+This is the most important data for your specific recommendations. This JSON array shows the user's most significant assets by value. Treat this as the primary portfolio data for making concrete suggestions.
+\`\`\`json
+{{{topTokenHoldings}}}
+\`\`\`
+
+**2. Full Portfolio (from 1inch Balance API):**
+This JSON object provides the complete list of all token balances for the user's wallet. Use this to understand the full scope and diversity of the portfolio, including long-tail assets.
+\`\`\`json
+{{{fullPortfolio}}}
+\`\`\`
+
+**3. 1inch History API Data:**
+This JSON object lists the user's recent transaction history. Analyze it for trading frequency, patterns, and risk tolerance.
+\`\`\`json
+{{{history}}}
+\`\`\`
+
+**4. 1inch Liquidity Sources & Presets API Data:**
+These JSON objects detail the available trading protocols and routing configurations on the network. This provides context about the current trading environment.
+Liquidity Sources:
+\`\`\`json
+{{{liquiditySources}}}
+\`\`\`
+Presets:
+\`\`\`json
+{{{presets}}}
+\`\`\`
+
+**Your Task:**
+
+Based on a synthesis of all the information above, please generate the following response:
+
+1.  **Risk Summary**: Write a concise summary of the overall portfolio risk. Consider asset concentration (is it all in one token?), exposure to volatile assets vs. stablecoins, and insights from their transaction history (e.g., are they a frequent trader, do they take profits, etc.).
+2.  **Recommendations**: Provide specific, actionable trading strategies focused *directly* on the **Top Token Holdings** listed first. For each of these top tokens, suggest a concrete action, such as holding, swapping for a different asset (e.g., a stablecoin or another token with higher potential), or diversifying. Your recommendations should be practical and clearly justified based on the data. Include general advice on efficient trading, like optimizing gas fees or managing token approvals.
+
+Structure your response into the 'riskSummary' and 'recommendations' output fields.`;
+
+
 export async function prepareComprehensiveRiskAnalysis(address: string) {
 
     try {
         console.log("Starting comprehensive risk analysis preparation for address:", address);
         const [
             historyResult,
-            tokensResult,
             liquiditySourcesResult,
             presetsResult,
-            healthResult,
             portfolioResult,
         ] = await Promise.all([
             getHistory(address),
-            getTokens(),
             getLiquiditySources(),
             getPresets(),
-            getHealthCheck(),
             getPortfolio(address), 
         ]);
 
@@ -30,10 +69,8 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
 
         const errors = [
             { name: '1inch History', error: historyResult.error },
-            { name: '1inch Tokens', error: tokensResult.error },
             { name: '1inch Liquidity Sources', error: liquiditySourcesResult.error },
             { name: '1inch Presets', error: presetsResult.error },
-            { name: '1inch Health Check', error: healthResult.error },
             { name: '1inch Portfolio', error: portfolioResult.error },
         ].filter(result => !!result.error);
 
@@ -55,24 +92,30 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
             }));
         
         const analysisInput = {
+            topTokenHoldings: topHoldings,
+            fullPortfolio: portfolioResult.raw?.balance?.response,
             history: historyResult.response,
-            tokens: tokensResult.tokens.slice(0, 100), 
             liquiditySources: liquiditySourcesResult.response,
             presets: presetsResult.response,
-            health: healthResult.response,
-            topTokenHoldings: topHoldings,
         };
+
+        const fullPromptForDisplay = PROMPT_TEMPLATE_FOR_DISPLAY
+            .replace('{{{topTokenHoldings}}}', JSON.stringify(analysisInput.topTokenHoldings, null, 2))
+            .replace('{{{fullPortfolio}}}', JSON.stringify(analysisInput.fullPortfolio, null, 2))
+            .replace('{{{history}}}', JSON.stringify(analysisInput.history, null, 2))
+            .replace('{{{liquiditySources}}}', JSON.stringify(analysisInput.liquiditySources, null, 2))
+            .replace('{{{presets}}}', JSON.stringify(analysisInput.presets, null, 2));
         
         console.log("Preparation complete. Returning data to client.");
         return { 
             data: {
                 analysisInput: analysisInput,
+                fullPromptForDisplay: fullPromptForDisplay,
                 raw: {
                     history: historyResult,
-                    tokens: tokensResult,
                     liquiditySources: liquiditySourcesResult,
                     presets: presetsResult,
-                    health: healthResult,
+                    portfolio: portfolioResult.raw,
                 }
             },
             error: null
