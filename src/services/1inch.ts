@@ -50,12 +50,13 @@ async function fetch1inch(path: string, options: RequestInit = {}): Promise<ApiR
 }
 
 export async function getTokens(): Promise<{ tokens: Token[], raw: ApiResult, error?: string }> {
-    const result = await fetch1inch(`/token/v1.2/${CHAIN_ID}`);
+    const result = await fetch1inch(`/token/v1.3/${CHAIN_ID}`);
   
     if (!result.response || result.error) {
       return { tokens: [], raw: result, error: result.error };
     }
   
+    // The response is a map of token objects, not an object with a 'tokens' key.
     const tokenList: Token[] = Object.values(result.response).slice(0, 100).map((token: any) => ({
       symbol: token.symbol,
       name: token.name,
