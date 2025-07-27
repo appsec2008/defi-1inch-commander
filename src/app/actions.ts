@@ -1,71 +1,17 @@
 'use server';
 
 import { analyzePortfolioRisk } from '@/ai/flows/analyze-portfolio-risk';
-import { getTokens, getPortfolio, getHistory, getLiquiditySources, getPresets, getHealthCheck, getQuote, getSwap } from '@/services/1inch';
+import { getTokens, getHistory, getLiquiditySources, getPresets, getHealthCheck, getQuote, getSwap } from '@/services/1inch';
 import { getPortfolioAssets as getMoralisPortfolio } from '@/services/moralis';
 import { formatUnits, parseUnits } from 'viem';
 import { estimateGas } from '@/services/ethers';
 
 
 export async function prepareComprehensiveRiskAnalysis(address: string) {
-    const ANALYZE_PORTFOLIO_RISK_PROMPT_TEMPLATE = `You are an expert portfolio risk analyst and crypto trading strategist. Your goal is to provide a clear, actionable analysis for the user based on the data provided.
-
-You will be given several pieces of data, each from a specific 1inch API endpoint. Use all of this information to build a complete picture of the user's context and the market.
-
-**1. 1inch Portfolio API Data:**
-This JSON object shows the user's wallet balances from the 1inch perspective.
-\`\`\`json
-{{{json portfolio}}}
-\`\`\`
-
-**2. 1inch History API Data:**
-This JSON object lists the user's recent transaction history. Analyze it for trading frequency, patterns, and risk tolerance.
-\`\`\`json
-{{{json history}}}
-\`\`\`
-
-**3. 1inch Tokens API Data:**
-This JSON array provides a list of all swappable tokens on the network. Use this for general market context.
-\`\`\`json
-{{{json tokens}}}
-\`\`\`
-
-**4. 1inch Liquidity Sources & Presets API Data:**
-These JSON objects detail the available trading protocols and routing configurations on the network.
-Liquidity Sources:
-\`\`\`json
-{{{json liquiditySources}}}
-\`\`\`
-Presets:
-\`\`\`json
-{{{json presets}}}
-\`\`\`
-
-**5. 1inch Health Check API Data:**
-This JSON object shows the current operational status of the 1inch APIs.
-\`\`\`json
-{{{json health}}}
-\`\`\`
-
-**6. User's Top 5 Token Holdings (from Moralis API):**
-This is the most important data for your specific recommendations. This JSON array shows the user's most significant assets by value.
-\`\`\`json
-{{{json topTokenHoldings}}}
-\`\`\`
-
-**Your Task:**
-
-Based on a synthesis of all the information above, please generate the following response:
-
-1.  **Risk Summary**: Write a concise summary of the overall portfolio risk. Consider asset concentration (is it all in one token?), exposure to volatile assets vs. stablecoins, and insights from their transaction history (e.g., are they a frequent trader, do they take profits, etc.).
-2.  **Recommendations**: Provide specific, actionable trading strategies focused *directly* on the **Top 5 Token Holdings** listed in the final JSON object. For each of these top tokens, suggest a concrete action, such as holding, swapping for a different asset (e.g., a stablecoin or another token with higher potential), or diversifying. Your recommendations should be practical and clearly justified based on the data. Include general advice on efficient trading, like optimizing gas fees or managing token approvals.
-
-Structure your response into the 'riskSummary' and 'recommendations' output fields.`;
 
     try {
         console.log("Starting comprehensive risk analysis preparation for address:", address);
         const [
-            portfolioResult,
             historyResult,
             tokensResult,
             liquiditySourcesResult,
@@ -73,7 +19,6 @@ Structure your response into the 'riskSummary' and 'recommendations' output fiel
             healthResult,
             moralisPortfolioResult,
         ] = await Promise.all([
-            getPortfolio(address),
             getHistory(address),
             getTokens(),
             getLiquiditySources(),
@@ -86,7 +31,6 @@ Structure your response into the 'riskSummary' and 'recommendations' output fiel
 
         // Check for errors in each API call, but don't fail the whole process
         const errors = [
-            { name: '1inch Portfolio', error: portfolioResult.error },
             { name: '1inch History', error: historyResult.error },
             { name: '1inch Tokens', error: tokensResult.error },
             { name: '1inch Liquidity Sources', error: liquiditySourcesResult.error },
@@ -113,7 +57,6 @@ Structure your response into the 'riskSummary' and 'recommendations' output fiel
             }));
         
         const analysisInput = {
-            portfolio: portfolioResult.response,
             history: historyResult.response,
             tokens: tokensResult.tokens.slice(0, 100), // Show only a subset for brevity
             liquiditySources: liquiditySourcesResult.response,
@@ -121,23 +64,12 @@ Structure your response into the 'riskSummary' and 'recommendations' output fiel
             health: healthResult.response,
             topTokenHoldings: topHoldings,
         };
-
-        // Construct the full prompt for display purposes in the confirmation dialog
-        let fullPromptForDisplay = ANALYZE_PORTFOLIO_RISK_PROMPT_TEMPLATE;
-        for (const key in analysisInput) {
-            const placeholder = `{{{json ${key}}}}`;
-            const value = (analysisInput as any)[key];
-            const replacement = JSON.stringify(value, null, 2);
-            fullPromptForDisplay = fullPromptForDisplay.replace(new RegExp(placeholder.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g'), replacement);
-        }
         
         console.log("Preparation complete. Returning data to client.");
         return { 
             data: {
                 analysisInput: analysisInput, // This is sent to the flow
-                fullPromptForDisplay: fullPromptForDisplay, // This is shown in the dialog
                 raw: {
-                    portfolio: portfolioResult,
                     history: historyResult,
                     tokens: tokensResult,
                     liquiditySources: liquiditySourcesResult,

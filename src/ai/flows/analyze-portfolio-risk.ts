@@ -12,13 +12,12 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const AnalyzePortfolioRiskInputSchema = z.object({
-  portfolio: z.any().describe("A JSON object from the 1inch Portfolio API, showing the user's assets as seen by 1inch."),
   history: z.any().describe("A JSON object from the 1inch History API, detailing the user's past transaction events."),
   tokens: z.any().describe("A JSON array from the 1inch Token API, listing all swappable tokens on the network."),
   liquiditySources: z.any().describe("A JSON object from the 1inch Liquidity Sources API, showing available trading protocols."),
   presets: z.any().describe("A JSON object from the 1inch Presets API, detailing network routing configurations."),
   health: z.any().describe("A JSON object from the 1inch Health Check API, indicating the status of the network services."),
-  topTokenHoldings: z.any().describe('A focused JSON array of the top 5 token holdings by value from the user\'s wallet, including symbol, name, balance, and price. This data comes from the Moralis API.'),
+  topTokenHoldings: z.any().describe('A focused JSON array of the top token holdings by value from the user\'s wallet, including symbol, name, balance, and price. This data comes from the Moralis API and should be treated as the primary source for the user\'s portfolio.'),
 });
 export type AnalyzePortfolioRiskInput = z.infer<typeof AnalyzePortfolioRiskInputSchema>;
 
@@ -32,19 +31,14 @@ export async function analyzePortfolioRisk(input: AnalyzePortfolioRiskInput): Pr
   return analyzePortfolioRiskFlow(input);
 }
 
+const ANALYZE_PORTFOLIO_RISK_PROMPT_TEMPLATE = `You are an expert portfolio risk analyst and crypto trading strategist. Your goal is to provide a clear, actionable analysis for the user based on the data provided.
 
-const analyzePortfolioRiskPrompt = ai.definePrompt({
-  name: 'analyzePortfolioRiskPrompt',
-  input: {schema: AnalyzePortfolioRiskInputSchema},
-  output: {schema: AnalyzePortfolioRiskOutputSchema},
-  prompt: `You are an expert portfolio risk analyst and crypto trading strategist. Your goal is to provide a clear, actionable analysis for the user based on the data provided.
+You will be given several pieces of data. Use all of this information to build a complete picture of the user's context and the market.
 
-You will be given several pieces of data, each from a specific 1inch API endpoint. Use all of this information to build a complete picture of the user's context and the market.
-
-**1. 1inch Portfolio API Data:**
-This JSON object shows the user's wallet balances from the 1inch perspective.
+**1. User's Top Token Holdings (from Moralis API):**
+This is the most important data for your specific recommendations. This JSON array shows the user's most significant assets by value. Treat this as the primary portfolio data.
 \`\`\`json
-{{{json portfolio}}}
+{{{json topTokenHoldings}}}
 \`\`\`
 
 **2. 1inch History API Data:**
@@ -76,20 +70,21 @@ This JSON object shows the current operational status of the 1inch APIs.
 {{{json health}}}
 \`\`\`
 
-**6. User's Top 5 Token Holdings (from Moralis API):**
-This is the most important data for your specific recommendations. This JSON array shows the user's most significant assets by value.
-\`\`\`json
-{{{json topTokenHoldings}}}
-\`\`\`
-
 **Your Task:**
 
 Based on a synthesis of all the information above, please generate the following response:
 
 1.  **Risk Summary**: Write a concise summary of the overall portfolio risk. Consider asset concentration (is it all in one token?), exposure to volatile assets vs. stablecoins, and insights from their transaction history (e.g., are they a frequent trader, do they take profits, etc.).
-2.  **Recommendations**: Provide specific, actionable trading strategies focused *directly* on the **Top 5 Token Holdings** listed in the final JSON object. For each of these top tokens, suggest a concrete action, such as holding, swapping for a different asset (e.g., a stablecoin or another token with higher potential), or diversifying. Your recommendations should be practical and clearly justified based on the data. Include general advice on efficient trading, like optimizing gas fees or managing token approvals.
+2.  **Recommendations**: Provide specific, actionable trading strategies focused *directly* on the **Top Token Holdings** listed in the first JSON object. For each of these top tokens, suggest a concrete action, such as holding, swapping for a different asset (e.g., a stablecoin or another token with higher potential), or diversifying. Your recommendations should be practical and clearly justified based on the data. Include general advice on efficient trading, like optimizing gas fees or managing token approvals.
 
-Structure your response into the 'riskSummary' and 'recommendations' output fields.`,
+Structure your response into the 'riskSummary' and 'recommendations' output fields.`;
+
+
+const analyzePortfolioRiskPrompt = ai.definePrompt({
+  name: 'analyzePortfolioRiskPrompt',
+  input: {schema: AnalyzePortfolioRiskInputSchema},
+  output: {schema: AnalyzePortfolioRiskOutputSchema},
+  prompt: ANALYZE_PORTFOLIO_RISK_PROMPT_TEMPLATE,
 });
 
 const analyzePortfolioRiskFlow = ai.defineFlow(

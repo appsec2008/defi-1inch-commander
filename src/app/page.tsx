@@ -30,7 +30,6 @@ export default function Home() {
   const [apiRiskAnalysisResponse, setApiRiskAnalysisResponse] = useState({});
   
   // States for individual 1inch API calls for AI context
-  const [apiAiPortfolioResponse, setApiAiPortfolioResponse] = useState({});
   const [apiAiHistoryResponse, setApiAiHistoryResponse] = useState({});
   const [apiAiTokensResponse, setApiAiTokensResponse] = useState({});
   const [apiAiLiquidityResponse, setApiAiLiquidityResponse] = useState({});
@@ -56,7 +55,6 @@ export default function Home() {
 
   const handleAnalysisResponse = useCallback((response: any) => {
     setApiRiskAnalysisResponse(response?.ai || {});
-    setApiAiPortfolioResponse(response?.raw?.portfolio || {});
     setApiAiHistoryResponse(response?.raw?.history || {});
     setApiAiTokensResponse(response?.raw?.tokens || {});
     setApiAiLiquidityResponse(response?.raw?.liquiditySources || {});
@@ -109,7 +107,6 @@ export default function Home() {
         setApiGasResponse({});
         setApiSpotPricesResponse({});
         setApiRiskAnalysisResponse({});
-        setApiAiPortfolioResponse({});
         setApiAiHistoryResponse({});
         setApiAiTokensResponse({});
         setApiAiLiquidityResponse({});
@@ -248,11 +245,6 @@ export default function Home() {
                     "AI Risk Assessment",
                     "The context sent to the AI and its generated response.",
                     apiRiskAnalysisResponse
-                )}
-                {renderApiResponseCard(
-                    "1inch AI: Portfolio API",
-                    "Fetches a user's wallet overview from the 1inch perspective.",
-                    apiAiPortfolioResponse
                 )}
                  {renderApiResponseCard(
                     "1inch AI: History API",
