@@ -77,6 +77,10 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
              topTokenHoldings: topHoldingsString,
         };
         
+        if (!analyzePortfolioRiskPrompt.prompt || typeof analyzePortfolioRiskPrompt.prompt !== 'string') {
+            throw new Error('AI prompt template is not a valid string.');
+        }
+
         const fullPrompt = analyzePortfolioRiskPrompt.prompt
             .replace('{{{portfolioData}}}', portfolioDataString)
             .replace('{{{topTokenHoldings}}}', topHoldingsString);
