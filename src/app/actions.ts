@@ -1,6 +1,6 @@
 'use server';
 
-import { analyzePortfolioRisk } from '@/ai/flows/analyze-portfolio-risk';
+import { analyzePortfolioRisk, prompt as analyzePortfolioRiskPrompt } from '@/ai/flows/analyze-portfolio-risk';
 import { getTokens, getPortfolio, getHistory, getLiquiditySources, getPresets, getHealthCheck, getQuote, getSwap } from '@/services/1inch';
 import { getPortfolioAssets as getMoralisPortfolio } from '@/services/moralis';
 import { formatUnits, parseUnits } from 'viem';
@@ -47,16 +47,6 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
 
         console.log("Successfully fetched all data. Formatting context...");
 
-        // Extract clean data for the AI, handling potential failures
-        const contextForAi = {
-            portfolio: portfolioResult.error ? { error: portfolioResult.error } : portfolioResult.response,
-            history: historyResult.error ? { error: historyResult.error } : historyResult.response,
-            tokens: tokensResult.error ? { error: tokensResult.error } : tokensResult.tokens,
-            liquiditySources: liquiditySourcesResult.error ? { error: liquiditySourcesResult.error } : liquiditySourcesResult.response,
-            presets: presetsResult.error ? { error: presetsResult.error } : presetsResult.response,
-            health: healthResult.error ? { error: healthResult.error } : healthResult.response,
-        };
-
         const topHoldings = (moralisPortfolioResult.assets || [])
             .sort((a, b) => (b.balance * b.price) - (a.balance * a.price))
             .slice(0, 5)
@@ -68,12 +58,14 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
                 value: asset.balance * asset.price,
             }));
         
-        const portfolioDataString = JSON.stringify(contextForAi, null, 2);
-        const topHoldingsString = JSON.stringify(topHoldings, null, 2);
-
         const analysisInput = {
-             portfolioData: portfolioDataString,
-             topTokenHoldings: topHoldingsString,
+            portfolio: JSON.stringify(portfolioResult.response, null, 2),
+            history: JSON.stringify(historyResult.response, null, 2),
+            tokens: JSON.stringify(tokensResult.tokens, null, 2),
+            liquiditySources: JSON.stringify(liquiditySourcesResult.response, null, 2),
+            presets: JSON.stringify(presetsResult.response, null, 2),
+            health: JSON.stringify(healthResult.response, null, 2),
+            topTokenHoldings: JSON.stringify(topHoldings, null, 2),
         };
         
         console.log("Preparation complete. Returning data to client.");
