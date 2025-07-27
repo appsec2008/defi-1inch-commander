@@ -17,8 +17,12 @@ async function fetch1inch(path: string, options: RequestInit = {}): Promise<ApiR
   const method = options.method || 'GET';
 
   const requestDetails: ApiResult['request'] = { method, url };
-  if (options.body) {
-    requestDetails.body = JSON.parse(options.body as string);
+  if (options.body && typeof options.body === 'string') {
+    try {
+        requestDetails.body = JSON.parse(options.body);
+    } catch (e) {
+        requestDetails.body = options.body;
+    }
   }
 
   if (!apiKey || apiKey === 'YOUR_1INCH_API_KEY_HERE') {
@@ -123,7 +127,7 @@ export async function getSpotPrices(tokenAddresses: string[]): Promise<{ prices:
 }
 
 export async function getPortfolio(address: string): Promise<{ assets: Asset[], raw: any, error?: string }> {
-    const balanceResult = await fetch1inch(`/balance/v5.2/${CHAIN_ID}/balances/${address}`);
+    const balanceResult = await fetch1inch(`/balance/v1.2/${CHAIN_ID}/balances/${address}`);
     
     const rawResponses = { balance: balanceResult, tokens: {}, spotPrices: {} };
 
