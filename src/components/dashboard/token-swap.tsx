@@ -77,54 +77,65 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
   const toTokenData = useMemo(() => tokens.find(t => t.symbol === toTokenSymbol), [tokens, toTokenSymbol]);
   
   const portfolioTokens = useMemo(() => {
-    // Filter the main token list to only include tokens present in the user's portfolio
-    const portfolioSymbols = new Set(portfolio.map(a => a.symbol));
-    return tokens.filter(t => portfolioSymbols.has(t.symbol));
+    // Create a Set of symbols from the 1inch token list for efficient lookup
+    const swappableSymbols = new Set(tokens.map(t => t.symbol));
+    // Filter the user's portfolio to only include assets that are also in the swappable tokens list
+    const portfolioAssets = portfolio.filter(a => swappableSymbols.has(a.symbol));
+    // Map these assets back to the full Token type from the main tokens list
+    const portfolioAssetSymbols = new Set(portfolioAssets.map(a => a.symbol));
+    return tokens.filter(t => portfolioAssetSymbols.has(t.symbol));
   }, [tokens, portfolio]);
 
   const is1inchApiConfigured = !!process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
 
   useEffect(() => {
-    if (tokens.length > 0) {
-      let defaultFromSymbol: string | undefined;
+    if (tokens.length > 0 && portfolioTokens.length > 0) {
+        let defaultFromSymbol = portfolioTokens[0]?.symbol;
   
-      if (portfolio.length > 0) {
-        const sortedPortfolio = [...portfolio].sort((a, b) => (b.balance * b.price) - (a.balance * a.price));
-        let highestValueAsset = sortedPortfolio[0];
-        if (highestValueAsset?.id === 'eth-native' && sortedPortfolio.length > 1) {
-          highestValueAsset = sortedPortfolio[1];
+        // Try to find a more valuable asset to default to, excluding native ETH if other options exist
+        if (portfolio.length > 0) {
+            const sortedPortfolio = [...portfolio]
+                .filter(p => portfolioTokens.some(pt => pt.symbol === p.symbol)) // Only consider swappable portfolio assets
+                .sort((a, b) => (b.balance * b.price) - (a.balance * a.price));
+
+            let highestValueAsset = sortedPortfolio[0];
+            // If the highest value is native ETH and there are other ERC20s, pick the next one
+            if (highestValueAsset?.id === 'eth-native' && sortedPortfolio.length > 1) {
+                highestValueAsset = sortedPortfolio[1];
+            }
+            if (highestValueAsset) {
+                defaultFromSymbol = highestValueAsset.symbol;
+            }
         }
-        defaultFromSymbol = highestValueAsset?.symbol;
-      }
       
-      if (!defaultFromSymbol) {
-        defaultFromSymbol = tokens.find(t => t.symbol === 'ETH')?.symbol || tokens[0]?.symbol;
-      }
-      
-      handleFromTokenChange(defaultFromSymbol);
+        handleFromTokenChange(defaultFromSymbol);
   
-      let defaultToSymbol: string | undefined;
-      if (defaultFromSymbol === 'USDT') {
-        defaultToSymbol = tokens.find(t => t.symbol === 'USDC')?.symbol;
-      } else {
-        defaultToSymbol = tokens.find(t => t.symbol === 'USDT')?.symbol;
-      }
-  
-      if (!defaultToSymbol || defaultToSymbol === defaultFromSymbol) {
-        defaultToSymbol = tokens.find(t => t.symbol !== defaultFromSymbol)?.symbol;
-      }
-      
-      setToTokenSymbol(defaultToSymbol);
+        let defaultToSymbol: string | undefined;
+        if (defaultFromSymbol === 'USDT') {
+            defaultToSymbol = tokens.find(t => t.symbol === 'USDC')?.symbol;
+        } else {
+            defaultToSymbol = tokens.find(t => t.symbol === 'USDT')?.symbol;
+        }
+    
+        if (!defaultToSymbol || defaultToSymbol === defaultFromSymbol) {
+            defaultToSymbol = tokens.find(t => t.symbol !== defaultFromSymbol)?.symbol;
+        }
+        
+        setToTokenSymbol(defaultToSymbol);
+    } else if (tokens.length > 0) {
+        // Fallback if user has no swappable tokens in portfolio
+        handleFromTokenChange('ETH');
+        setToTokenSymbol('USDT');
     }
-  }, [tokens, portfolio]);
+}, [tokens, portfolio, portfolioTokens]); // Rerun when portfolioTokens is recalculated
 
 
   const fetchQuoteAndGas = useCallback(async () => {
     if (!fromTokenData || !toTokenData || !debouncedFromAmount || isNaN(parseFloat(debouncedFromAmount)) || disabled || !address || parseFloat(debouncedFromAmount) <= 0) {
       setQuote(null);
       setGas(null);
-      onQuoteResponse(null);
-      onGasResponse(null);
+      onQuoteResponse({});
+      onGasResponse({});
       return;
     }
 
@@ -135,11 +146,11 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
 
     try {
         const [quoteResult, gasResult] = await Promise.all([
-            getQuoteAction(fromTokenData, toTokenData, debouncedFromAmount),
-            getGasEstimateAction(fromTokenData, toTokenData, debouncedFromAmount, address)
+            getQuoteAction({ address: fromTokenData.address, decimals: fromTokenData.decimals }, { address: toTokenData.address, decimals: toTokenData.decimals }, debouncedFromAmount),
+            getGasEstimateAction({ address: fromTokenData.address, decimals: fromTokenData.decimals }, { address: toTokenData.address, decimals: toTokenData.decimals }, debouncedFromAmount, address)
         ]);
         
-        onQuoteResponse(quoteResult.raw);
+        onQuoteResponse(quoteResult.raw || { error: quoteResult.error });
         if (quoteResult.error) {
             setQuoteError(quoteResult.error);
             setQuote(null);
@@ -147,7 +158,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
             setQuote(quoteResult.data);
         }
 
-        onGasResponse(gasResult.raw);
+        onGasResponse(gasResult.raw || { error: gasResult.error });
         if (gasResult.error) {
             setGasError(gasResult.error);
             setGas(null);
@@ -180,6 +191,8 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
     const asset = portfolio.find(a => a.symbol === symbol);
     if (asset) {
       setFromAmount(asset.balance.toString());
+    } else {
+      setFromAmount("1.0"); // Reset to default if token not in portfolio
     }
   };
 
@@ -207,7 +220,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
           toToken: toTokenData,
           fromAmount,
           txHash: simulatedTxHash,
-          gas: gas || '150000',
+          gas: gas,
       });
       setIsSwapSuccessDialogOpen(true);
     }, 1500);
@@ -255,7 +268,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
                       <span>{token.symbol}</span>
                     </div>
                   </SelectItem>
-                )) : <SelectItem value="no-tokens" disabled>No tokens in portfolio</SelectItem>}
+                )) : <SelectItem value="no-tokens" disabled>No portfolio tokens found</SelectItem>}
               </SelectContent>
             </Select>
             <Input
@@ -334,7 +347,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
              <div className="flex justify-between">
                 <span>Price:</span>
                 <span className="font-mono">
-                    {isFetching ? '...' : quote && fromAmount && parseFloat(fromAmount) > 0 ? `1 ${fromTokenSymbol} = ${(parseFloat(toAmountDisplay)/parseFloat(fromAmount)).toFixed(4)} ${toTokenSymbol}` : 'N/A'}
+                    {isFetching ? '...' : quote && fromAmount && parseFloat(fromAmount) > 0 && toAmountDisplay ? `1 ${fromTokenSymbol} = ${(parseFloat(toAmountDisplay)/parseFloat(fromAmount)).toFixed(4)} ${toTokenSymbol}` : 'N/A'}
                 </span>
              </div>
              <div className="flex justify-between">
@@ -384,7 +397,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Est. Gas Fee:</span>
-                            <span className="font-mono">{swapSuccessDetails.gas ? `~${swapSuccessDetails.gas} units` : '~150000 units'}</span>
+                            <span className="font-mono">{swapSuccessDetails.gas ? `~${swapSuccessDetails.gas} units` : 'N/A'}</span>
                         </div>
                         <div className="flex justify-between items-start">
                             <span className="text-muted-foreground pt-0.5">Route:</span>
