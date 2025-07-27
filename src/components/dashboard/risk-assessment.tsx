@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { prepareComprehensiveRiskAnalysis, executeComprehensiveRiskAnalysis } from "@/app/actions";
 import type { Asset } from "@/lib/types";
 import { Loader2, ShieldAlert, ShieldCheck, Forward } from "lucide-react";
-import { useAccount } from "wagmi";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     AlertDialog,
@@ -27,6 +26,7 @@ import {
 
 
 interface RiskAssessmentProps {
+  address: string | undefined;
   portfolio: Asset[];
   disabled: boolean;
   onAnalysisResponse: (response: any) => void;
@@ -52,8 +52,7 @@ const renderMarkdown = (text: string) => {
 }
 
 
-export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }: RiskAssessmentProps) {
-  const { address } = useAccount();
+export function RiskAssessment({ address, portfolio = [], disabled, onAnalysisResponse }: RiskAssessmentProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult>(null);
@@ -104,7 +103,7 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
     
     try {
       const analysisResult = await executeComprehensiveRiskAnalysis(preparedData);
-      onAnalysisResponse({ raw: preparedData.raw, ai: { ...analysisResult.raw, request: preparedData.analysisInput } });
+      onAnalysisResponse({ raw: preparedData.raw, ai: { request: preparedData.analysisInput, response: analysisResult.data } });
 
       if (analysisResult.error) {
         setError(analysisResult.error);

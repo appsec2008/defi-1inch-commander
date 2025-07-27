@@ -140,7 +140,7 @@ export default function Home() {
             <h4 className="text-sm font-semibold mb-2">Request</h4>
             <ScrollArea className="h-[200px] w-full bg-secondary/50 rounded-md p-4 mb-4">
                 <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
-                    {requestContent}
+                    {JSON.stringify(requestData, null, 2)}
                 </pre>
             </ScrollArea>
 
@@ -207,6 +207,7 @@ export default function Home() {
             )}
             <PortfolioOverview assets={portfolioAssets} loading={loading} isMoralisApiConfigured={isMoralisApiConfigured} />
             <RiskAssessment 
+                address={address}
                 portfolio={portfolioAssets} 
                 disabled={!isConnected || loading || !isMoralisApiConfigured}
                 onAnalysisResponse={handleAnalysisResponse}
