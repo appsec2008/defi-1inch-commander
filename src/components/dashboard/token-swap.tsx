@@ -76,6 +76,12 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
   const fromTokenData = useMemo(() => tokens.find(t => t.symbol === fromTokenSymbol), [tokens, fromTokenSymbol]);
   const toTokenData = useMemo(() => tokens.find(t => t.symbol === toTokenSymbol), [tokens, toTokenSymbol]);
   
+  const portfolioTokens = useMemo(() => {
+    // Filter the main token list to only include tokens present in the user's portfolio
+    const portfolioSymbols = new Set(portfolio.map(a => a.symbol));
+    return tokens.filter(t => portfolioSymbols.has(t.symbol));
+  }, [tokens, portfolio]);
+
   const is1inchApiConfigured = !!process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
 
   useEffect(() => {
@@ -83,28 +89,20 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
       let defaultFromSymbol: string | undefined;
   
       if (portfolio.length > 0) {
-        // Sort portfolio by value to find the highest value assets
         const sortedPortfolio = [...portfolio].sort((a, b) => (b.balance * b.price) - (a.balance * a.price));
-        
         let highestValueAsset = sortedPortfolio[0];
-
-        // If the highest value asset is native ETH and there's another asset,
-        // default to the second highest value asset (top ERC20)
         if (highestValueAsset?.id === 'eth-native' && sortedPortfolio.length > 1) {
           highestValueAsset = sortedPortfolio[1];
         }
-        
         defaultFromSymbol = highestValueAsset?.symbol;
       }
       
-      // Fallback if no suitable portfolio asset is found
       if (!defaultFromSymbol) {
         defaultFromSymbol = tokens.find(t => t.symbol === 'ETH')?.symbol || tokens[0]?.symbol;
       }
       
-      setFromTokenSymbol(defaultFromSymbol);
+      handleFromTokenChange(defaultFromSymbol);
   
-      // Set the "To" token based on the "From" token
       let defaultToSymbol: string | undefined;
       if (defaultFromSymbol === 'USDT') {
         defaultToSymbol = tokens.find(t => t.symbol === 'USDC')?.symbol;
@@ -112,7 +110,6 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
         defaultToSymbol = tokens.find(t => t.symbol === 'USDT')?.symbol;
       }
   
-      // Ensure "To" token is not the same as "From" and exists
       if (!defaultToSymbol || defaultToSymbol === defaultFromSymbol) {
         defaultToSymbol = tokens.find(t => t.symbol !== defaultFromSymbol)?.symbol;
       }
@@ -123,7 +120,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
 
 
   const fetchQuoteAndGas = useCallback(async () => {
-    if (!fromTokenData || !toTokenData || !debouncedFromAmount || isNaN(parseFloat(debouncedFromAmount)) || disabled || !address) {
+    if (!fromTokenData || !toTokenData || !debouncedFromAmount || isNaN(parseFloat(debouncedFromAmount)) || disabled || !address || parseFloat(debouncedFromAmount) <= 0) {
       setQuote(null);
       setGas(null);
       onQuoteResponse(null);
@@ -137,13 +134,11 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
     setGasError(null);
 
     try {
-        // Fetch Quote and Gas in parallel
         const [quoteResult, gasResult] = await Promise.all([
             getQuoteAction(fromTokenData, toTokenData, debouncedFromAmount),
             getGasEstimateAction(fromTokenData, toTokenData, debouncedFromAmount, address)
         ]);
         
-        // Handle Quote Response
         onQuoteResponse(quoteResult.raw);
         if (quoteResult.error) {
             setQuoteError(quoteResult.error);
@@ -152,7 +147,6 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
             setQuote(quoteResult.data);
         }
 
-        // Handle Gas Response
         onGasResponse(gasResult.raw);
         if (gasResult.error) {
             setGasError(gasResult.error);
@@ -180,10 +174,24 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
     fetchQuoteAndGas();
   }, [fetchQuoteAndGas]);
 
+  const handleFromTokenChange = (symbol: string | undefined) => {
+    if (!symbol) return;
+    setFromTokenSymbol(symbol);
+    const asset = portfolio.find(a => a.symbol === symbol);
+    if (asset) {
+      setFromAmount(asset.balance.toString());
+    }
+  };
+
   const handleSwapTokens = () => {
-    const temp = fromTokenSymbol;
-    setFromTokenSymbol(toTokenSymbol);
-    setToTokenSymbol(temp);
+    const tempFromSymbol = fromTokenSymbol;
+    const tempToSymbol = toTokenSymbol;
+    
+    // Swap symbols
+    setToTokenSymbol(tempFromSymbol);
+
+    // This will also trigger the amount update
+    handleFromTokenChange(tempToSymbol);
   };
 
   const handleExecuteSwap = () => {
@@ -199,7 +207,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
           toToken: toTokenData,
           fromAmount,
           txHash: simulatedTxHash,
-          gas,
+          gas: gas || '150000',
       });
       setIsSwapSuccessDialogOpen(true);
     }, 1500);
@@ -230,7 +238,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
         <div className="space-y-2 relative">
           <Label htmlFor="from-token">From</Label>
           <div className="flex gap-2">
-            <Select value={fromTokenSymbol} onValueChange={setFromTokenSymbol} disabled={disabled}>
+            <Select value={fromTokenSymbol} onValueChange={handleFromTokenChange} disabled={disabled || portfolioTokens.length === 0}>
               <SelectTrigger className="w-[150px]">
                 <SelectValue>
                   <div className="flex items-center gap-2">
@@ -240,14 +248,14 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                {tokens.map((token) => (
+                {portfolioTokens.length > 0 ? portfolioTokens.map((token) => (
                   <SelectItem key={token.address} value={token.symbol} disabled={token.symbol === toTokenSymbol}>
                     <div className="flex items-center gap-2">
                       {token.icon && <Image src={token.icon} alt={token.name} width={20} height={20} />}
                       <span>{token.symbol}</span>
                     </div>
                   </SelectItem>
-                ))}
+                )) : <SelectItem value="no-tokens" disabled>No tokens in portfolio</SelectItem>}
               </SelectContent>
             </Select>
             <Input
@@ -319,7 +327,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
                       </div>
                   ))}
                 </div>
-            ) : <span className="text-muted-foreground text-xs">Enter an amount to see route</span>}
+            ) : <span className="text-muted-foreground text-xs">{quoteError ? quoteError : "Enter an amount to see route" }</span>}
             {!disabled && !isFetching && quote && <span className="text-accent font-semibold">100%</span>}
           </div>
            <div className="text-xs text-muted-foreground space-y-1">
