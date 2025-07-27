@@ -69,7 +69,7 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
         };
         
         // This is where the prompt template is defined in the object from ai.definePrompt
-        const promptTemplate = (analyzePortfolioRiskPrompt as any).options.prompt;
+        const promptTemplate = (analyzePortfolioRiskPrompt as any).__config.prompt;
 
         // Construct the full prompt for display purposes
         let fullPromptForDisplay = promptTemplate || '';
