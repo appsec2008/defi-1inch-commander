@@ -50,14 +50,14 @@ async function fetch1inch(path: string, options: RequestInit = {}): Promise<ApiR
 }
 
 export async function getTokens(): Promise<{ tokens: Token[], raw: ApiResult, error?: string }> {
-    const result = await fetch1inch(`/token/v1.2/${CHAIN_ID}`);
+    const result = await fetch1inch(`/swap/v6.0/${CHAIN_ID}/tokens`);
   
     if (!result.response || result.error) {
       return { tokens: [], raw: result, error: result.error };
     }
   
     // The response is a map of token objects, not an object with a 'tokens' key.
-    const tokenList: Token[] = Object.values(result.response).slice(0, 100).map((token: any) => ({
+    const tokenList: Token[] = Object.values(result.response.tokens).slice(0, 100).map((token: any) => ({
       symbol: token.symbol,
       name: token.name,
       address: token.address,
@@ -133,13 +133,13 @@ export async function getHistory(address: string) {
 }
 
 export async function getLiquiditySources() {
-    return fetch1inch(`/token/v1.2/${CHAIN_ID}/liquidity-sources`);
+    return fetch1inch(`/swap/v6.0/${CHAIN_ID}/liquidity-sources`);
 }
 
 export async function getPresets() {
-    return fetch1inch(`/token/v1.2/${CHAIN_ID}/presets`);
+    return fetch1inch(`/swap/v6.0/${CHAIN_ID}/presets`);
 }
 
 export async function getHealthCheck() {
-    return fetch1inch(`/healthcheck/v1.2/`);
+    return fetch1inch(`/healthcheck`);
 }

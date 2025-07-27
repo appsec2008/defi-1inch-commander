@@ -30,7 +30,7 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
 
         console.log("All API calls completed.");
 
-        // Check for errors in each API call
+        // Check for errors in each API call, but don't fail the whole process
         const errors = [
             { name: '1inch Portfolio', error: portfolioResult.error },
             { name: '1inch History', error: historyResult.error },
@@ -42,21 +42,19 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
         ].filter(result => !!result.error);
 
         if (errors.length > 0) {
-            const errorMessage = `Failed to fetch data from: ${errors.map(e => e.name).join(', ')}. Details: ${errors.map(e => e.error).join(', ')}`;
-            console.error("Error during data preparation:", errorMessage);
-            return { data: null, error: errorMessage };
+            console.warn("One or more API calls failed during data preparation:", errors);
         }
 
         console.log("Successfully fetched all data. Formatting context...");
 
-        // Extract clean data instead of raw API responses
+        // Extract clean data instead of raw API responses, handling potential failures
         const context = {
-            portfolio: portfolioResult.response,
-            history: historyResult.response,
-            tokens: tokensResult.tokens, 
-            liquiditySources: liquiditySourcesResult.response,
-            presets: presetsResult.response,
-            health: healthResult.response,
+            portfolio: portfolioResult.error ? { error: portfolioResult.error } : portfolioResult.response,
+            history: historyResult.error ? { error: historyResult.error } : historyResult.response,
+            tokens: tokensResult.error ? { error: tokensResult.error } : tokensResult.tokens, 
+            liquiditySources: liquiditySourcesResult.error ? { error: liquiditySourcesResult.error } : liquiditySourcesResult.response,
+            presets: presetsResult.error ? { error: presetsResult.error } : presetsResult.response,
+            health: healthResult.error ? { error: healthResult.error } : healthResult.response,
         };
 
         // Identify top 5 token holdings by value

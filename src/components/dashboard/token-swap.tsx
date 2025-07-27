@@ -121,7 +121,12 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
     } else if (tokens.length > 0) {
         // Fallback if user has no swappable tokens in portfolio
         setFromTokenSymbol('ETH');
-        setToTokenSymbol('USDT');
+        const usdtToken = tokens.find(t => t.symbol === 'USDT');
+        if (usdtToken) {
+          setToTokenSymbol('USDT');
+        } else if (tokens.length > 1) {
+          setToTokenSymbol(tokens[1].symbol)
+        }
     }
 }, [tokens, portfolioTokens]);
 
