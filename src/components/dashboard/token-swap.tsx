@@ -294,9 +294,12 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
               <SelectContent>
                 {portfolioTokens.length > 0 ? portfolioTokens.map((token) => (
                   <SelectItem key={token.address} value={token.symbol} disabled={token.symbol === toTokenSymbol}>
-                    <div className="flex items-center gap-2">
-                      {token.icon && <Image src={token.icon} alt={token.name} width={20} height={20} />}
-                      <span>{token.symbol}</span>
+                    <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2">
+                            {token.icon && <Image src={token.icon} alt={token.name} width={20} height={20} />}
+                            <span>{token.symbol}</span>
+                        </div>
+                        <span className="text-muted-foreground text-xs font-mono">{token.balance.toFixed(4)}</span>
                     </div>
                   </SelectItem>
                 )) : <SelectItem value="no-tokens" disabled>No portfolio tokens found</SelectItem>}
