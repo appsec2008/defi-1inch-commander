@@ -111,9 +111,14 @@ export default function Home() {
   }, [isConnected, address, is1inchApiConfigured]);
 
   const renderApiResponseCard = (title: string, description: string, data: any) => {
-    const isAiCard = title === "AI Risk Assessment";
     let requestData = data?.request;
     let responseData = data?.response || data || {};
+  
+    // For AI card, the whole 'data' object is the 'ai' object which contains request/response.
+    if (title === "AI Risk Assessment") {
+        requestData = data?.request;
+        responseData = data?.response;
+    }
 
     return (
         <Card>
@@ -122,7 +127,7 @@ export default function Home() {
             <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
-            {isAiCard && requestData && (
+            {requestData && (
                 <>
                 <h4 className="text-sm font-semibold mb-2">Request</h4>
                 <ScrollArea className="h-[200px] w-full bg-secondary/50 rounded-md p-4 mb-4">
