@@ -32,6 +32,10 @@ export function PortfolioOverview({ assets = [], loading, isMoralisApiConfigured
     0
   );
 
+  const top10Assets = assets
+    .sort((a, b) => (b.balance * b.price) - (a.balance * a.price))
+    .slice(0, 10);
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -89,8 +93,8 @@ export function PortfolioOverview({ assets = [], loading, isMoralisApiConfigured
                         <TableCell className="text-right"><Skeleton className="h-6 w-24 ml-auto" /></TableCell>
                     </TableRow>
                 ))
-            ) : assets.length > 0 ? (
-              assets.map((asset) => (
+            ) : top10Assets.length > 0 ? (
+              top10Assets.map((asset) => (
                 <TableRow key={asset.id}>
                   <TableCell>
                     <div className="flex items-center gap-3">
