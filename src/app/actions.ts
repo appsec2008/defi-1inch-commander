@@ -1,6 +1,6 @@
 'use server';
 
-import { analyzePortfolioRisk, prompt as analyzePortfolioRiskPrompt } from '@/ai/flows/analyze-portfolio-risk';
+import { analyzePortfolioRisk } from '@/ai/flows/analyze-portfolio-risk';
 import { getTokens, getPortfolio, getHistory, getLiquiditySources, getPresets, getHealthCheck, getQuote, getSwap } from '@/services/1inch';
 import { getPortfolioAssets as getMoralisPortfolio } from '@/services/moralis';
 import { formatUnits, parseUnits } from 'viem';
@@ -77,20 +77,9 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
              topTokenHoldings: topHoldingsString,
         };
         
-        // This is the prompt template itself, not the final rendered prompt.
-        const promptTemplate = analyzePortfolioRiskPrompt.prompt;
-        if (typeof promptTemplate !== 'string') {
-            throw new Error('AI prompt template from Genkit is not a valid string.');
-        }
-
-        const fullPromptForDisplay = promptTemplate
-            .replace('{{{portfolioData}}}', portfolioDataString)
-            .replace('{{{topTokenHoldings}}}', topHoldingsString);
-        
         console.log("Preparation complete. Returning data to client.");
         return { 
             data: {
-                prompt: fullPromptForDisplay,
                 analysisInput: analysisInput,
             },
             error: null
@@ -107,16 +96,10 @@ export async function executeComprehensiveRiskAnalysis(input: any) {
     try {
         const analysisResult = await analyzePortfolioRisk(input.analysisInput);
         
-        const fullPrompt = analyzePortfolioRiskPrompt.prompt
-            .replace('{{{portfolioData}}}', input.analysisInput.portfolioData)
-            .replace('{{{topTokenHoldings}}}', input.analysisInput.topTokenHoldings);
-
         return { 
             data: analysisResult,
             raw: {
-                request: {
-                    fullPrompt: fullPrompt
-                },
+                request: input.analysisInput, // Pass the input data for display
                 response: analysisResult,
             }
         };

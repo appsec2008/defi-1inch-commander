@@ -38,7 +38,6 @@ type AnalysisResult = {
 } | null;
 
 type PreparedData = {
-    prompt: string;
     analysisInput: any;
 } | null;
 
@@ -85,8 +84,8 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
       } else if (preparationResult.data) {
         setPreparedData(preparationResult.data);
       }
-    } catch (e) {
-      setError("An unexpected error occurred during preparation.");
+    } catch (e: any) {
+      setError(e.message || "An unexpected error occurred during preparation.");
     } finally {
       setIsLoading(false);
     }
@@ -146,7 +145,7 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
             <ShieldAlert className="w-16 h-16 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Ready to Assess Your Risk?</h3>
             <p className="text-muted-foreground mb-4">
-              Click the button to prepare the analysis and review the prompt.
+              Click the button to prepare the analysis and review the data that will be sent to the AI.
             </p>
             <Button onClick={onPrepare} disabled={isLoading || disabled}>
               {isLoading ? (
@@ -221,14 +220,14 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
     <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
         <AlertDialogContent className="max-w-3xl">
             <AlertDialogHeader>
-                <AlertDialogTitle>Confirm Analysis Prompt</AlertDialogTitle>
+                <AlertDialogTitle>Confirm AI Analysis Input</AlertDialogTitle>
                 <AlertDialogDescription>
-                    This is the exact request that will be sent to the AI for analysis. Review it and click continue.
+                    This is the exact JSON data that will be sent to the AI for analysis. The AI will use this data in conjunction with its prompt. Review it and click continue.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <ScrollArea className="h-[50vh] w-full bg-secondary/50 rounded-md p-4 border">
                 <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
-                    {preparedData?.prompt}
+                    {JSON.stringify(preparedData?.analysisInput, null, 2)}
                 </pre>
             </ScrollArea>
             <AlertDialogFooter>
