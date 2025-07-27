@@ -127,8 +127,8 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
     }));
   }
 
-  // Filter out assets with zero value unless they are the only asset
+  // Filter out assets with zero or negligible value
   const valuableAssets = assets.filter(asset => asset.balance * asset.price > 0.01);
 
-  return { assets: valuableAssets.length > 0 ? valuableAssets : assets, raw: rawResponses };
+  return { assets: valuableAssets, raw: rawResponses };
 }
