@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -14,6 +14,17 @@ import type { Asset } from "@/lib/types";
 import { Loader2, ShieldAlert, ShieldCheck, Forward } from "lucide-react";
 import { useAccount } from "wagmi";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 interface RiskAssessmentProps {
   portfolio: Asset[];
@@ -47,6 +58,14 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult>(null);
   const [preparedData, setPreparedData] = useState<PreparedData>(null);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (preparedData) {
+      setIsConfirmDialogOpen(true);
+    }
+  }, [preparedData]);
+
 
   const onPrepare = async () => {
     if (!address) {
@@ -81,6 +100,7 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
     setIsLoading(true);
     setError(null);
     setResult(null);
+    setPreparedData(null); // Close the dialog by clearing data
 
     try {
       const analysisResult = await executeComprehensiveRiskAnalysis(preparedData);
@@ -90,7 +110,6 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
         setError(analysisResult.error);
       } else if (analysisResult.data) {
         setResult(analysisResult.data);
-        setPreparedData(null); // Clear prepared data after execution
       }
     } catch (e) {
       setError("An unexpected error occurred during execution.");
@@ -98,6 +117,11 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
       setIsLoading(false);
     }
   };
+
+  const onCancel = () => {
+    setPreparedData(null);
+    setIsConfirmDialogOpen(false);
+  }
 
   const onRestart = () => {
     setResult(null);
@@ -107,6 +131,7 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="font-headline">AI Risk Assessment</CardTitle>
@@ -116,7 +141,7 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {!preparedData && !result && !isLoading && (
+        {!result && !isLoading && (
           <div className="flex flex-col items-center justify-center text-center p-8 border-2 border-dashed rounded-lg">
             <ShieldAlert className="w-16 h-16 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Ready to Assess Your Risk?</h3>
@@ -136,44 +161,12 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
           </div>
         )}
 
-        {isLoading && !result && !preparedData && (
-          <div className="flex flex-col items-center justify-center text-center p-8">
-            <Loader2 className="w-16 h-16 text-primary animate-spin mb-4" />
-            <h3 className="text-lg font-semibold">Preparing Analysis...</h3>
-            <p className="text-muted-foreground">
-              Gathering data from 1inch and Moralis to build the AI prompt.
-            </p>
-          </div>
-        )}
-        
-        {preparedData && !isLoading && (
-            <Card className="bg-secondary/50">
-                 <CardHeader>
-                    <CardTitle>Confirm Analysis Prompt</CardTitle>
-                    <CardDescription>This is the exact prompt that will be sent to the AI for analysis. Review it and click continue.</CardDescription>
-                 </CardHeader>
-                 <CardContent>
-                    <ScrollArea className="h-[300px] w-full bg-background/50 rounded-md p-4 mb-4 border">
-                        <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
-                            {preparedData.prompt}
-                        </pre>
-                    </ScrollArea>
-                    <div className="flex justify-end gap-2">
-                         <Button onClick={onRestart} variant="outline">Cancel</Button>
-                         <Button onClick={onExecute} disabled={isLoading}>
-                           {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...</> : <><Forward className="mr-2 h-4 w-4" />Confirm and Continue</>}
-                         </Button>
-                    </div>
-                 </CardContent>
-            </Card>
-        )}
-
-        {isLoading && result === null && (
+        {isLoading && !result && (
           <div className="flex flex-col items-center justify-center text-center p-8">
             <Loader2 className="w-16 h-16 text-primary animate-spin mb-4" />
             <h3 className="text-lg font-semibold">Analyzing Portfolio...</h3>
             <p className="text-muted-foreground">
-              Our AI is crunching the numbers with comprehensive data from 1inch. This may take a moment.
+              Our AI is crunching the numbers. This may take a moment.
             </p>
           </div>
         )}
@@ -224,5 +217,29 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
         )}
       </CardContent>
     </Card>
+
+    <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+        <AlertDialogContent className="max-w-3xl">
+            <AlertDialogHeader>
+                <AlertDialogTitle>Confirm Analysis Prompt</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This is the exact request that will be sent to the AI for analysis. Review it and click continue.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <ScrollArea className="h-[50vh] w-full bg-secondary/50 rounded-md p-4 border">
+                <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
+                    {preparedData?.prompt}
+                </pre>
+            </ScrollArea>
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={onCancel}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={onExecute} disabled={isLoading}>
+                    {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...</> : <><Forward className="mr-2 h-4 w-4" />Confirm and Continue</>}
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+
+    </>
   );
 }
