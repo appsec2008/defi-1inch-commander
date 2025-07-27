@@ -7,17 +7,7 @@ import { formatUnits, parseUnits } from 'viem';
 import { estimateGas } from '@/services/ethers';
 
 
-export async function handleRiskAnalysis(portfolio: string) {
-  try {
-    const result = await analyzePortfolioRisk({ portfolioData: portfolio });
-    return { data: result };
-  } catch (error) {
-    console.error(error);
-    return { error: 'Failed to analyze portfolio risk. Please try again later.' };
-  }
-}
-
-export async function handleComprehensiveRiskAnalysis(address: string) {
+export async function prepareComprehensiveRiskAnalysis(address: string) {
     try {
         const [
             portfolioResult,
@@ -66,13 +56,33 @@ export async function handleComprehensiveRiskAnalysis(address: string) {
              portfolioData: portfolioDataString,
              topTokenHoldings: topHoldingsString,
         };
-
-        const analysisResult = await analyzePortfolioRisk(analysisInput);
         
-        // Construct the full prompt for display
         const fullPrompt = analyzePortfolioRiskPrompt.prompt
             .replace('{{{portfolioData}}}', portfolioDataString)
             .replace('{{{topTokenHoldings}}}', topHoldingsString);
+
+        return { 
+            data: {
+                prompt: fullPrompt,
+                analysisInput: analysisInput,
+            },
+            error: null
+        };
+
+    } catch (error) {
+        console.error('Error during comprehensive risk analysis preparation:', error);
+        return { data: null, error: 'Failed to prepare comprehensive data. Please try again later.' };
+    }
+}
+
+
+export async function executeComprehensiveRiskAnalysis(input: any) {
+    try {
+        const analysisResult = await analyzePortfolioRisk(input.analysisInput);
+        
+        const fullPrompt = analyzePortfolioRiskPrompt.prompt
+            .replace('{{{portfolioData}}}', input.analysisInput.portfolioData)
+            .replace('{{{topTokenHoldings}}}', input.analysisInput.topTokenHoldings);
 
         return { 
             data: analysisResult,
@@ -85,8 +95,8 @@ export async function handleComprehensiveRiskAnalysis(address: string) {
         };
 
     } catch (error) {
-        console.error('Error during comprehensive risk analysis:', error);
-        return { error: 'Failed to fetch comprehensive data. Please try again later.' };
+        console.error('Error during comprehensive risk analysis execution:', error);
+        return { error: 'Failed to execute risk analysis. Please try again later.' };
     }
 }
 

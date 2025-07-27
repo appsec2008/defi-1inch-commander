@@ -9,10 +9,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { handleComprehensiveRiskAnalysis } from "@/app/actions";
+import { prepareComprehensiveRiskAnalysis, executeComprehensiveRiskAnalysis } from "@/app/actions";
 import type { Asset } from "@/lib/types";
-import { Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Loader2, ShieldAlert, ShieldCheck, Forward } from "lucide-react";
 import { useAccount } from "wagmi";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface RiskAssessmentProps {
   portfolio: Asset[];
@@ -23,6 +24,11 @@ interface RiskAssessmentProps {
 type AnalysisResult = {
   riskSummary: string;
   recommendations: string;
+} | null;
+
+type PreparedData = {
+    prompt: string;
+    analysisInput: any;
 } | null;
 
 // A simple markdown renderer
@@ -40,8 +46,9 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult>(null);
+  const [preparedData, setPreparedData] = useState<PreparedData>(null);
 
-  const onAnalyze = async () => {
+  const onPrepare = async () => {
     if (!address) {
         setError("Wallet is not connected.");
         return;
@@ -49,21 +56,55 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
     setIsLoading(true);
     setError(null);
     setResult(null);
+    setPreparedData(null);
+    onAnalysisResponse({}); // Clear previous raw response
+
     try {
-      const analysisResult = await handleComprehensiveRiskAnalysis(address);
+      const preparationResult = await prepareComprehensiveRiskAnalysis(address);
+      if (preparationResult.error) {
+        setError(preparationResult.error);
+      } else if (preparationResult.data) {
+        setPreparedData(preparationResult.data);
+      }
+    } catch (e) {
+      setError("An unexpected error occurred during preparation.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onExecute = async () => {
+    if (!preparedData) {
+        setError("No prepared data available to execute.");
+        return;
+    }
+    setIsLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const analysisResult = await executeComprehensiveRiskAnalysis(preparedData);
       onAnalysisResponse(analysisResult.raw || {});
 
       if (analysisResult.error) {
         setError(analysisResult.error);
       } else if (analysisResult.data) {
         setResult(analysisResult.data);
+        setPreparedData(null); // Clear prepared data after execution
       }
     } catch (e) {
-      setError("An unexpected error occurred.");
+      setError("An unexpected error occurred during execution.");
     } finally {
       setIsLoading(false);
     }
   };
+
+  const onRestart = () => {
+    setResult(null);
+    setPreparedData(null);
+    setError(null);
+    onAnalysisResponse({});
+  }
 
   return (
     <Card>
@@ -75,18 +116,18 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {!result && !isLoading && (
+        {!preparedData && !result && !isLoading && (
           <div className="flex flex-col items-center justify-center text-center p-8 border-2 border-dashed rounded-lg">
             <ShieldAlert className="w-16 h-16 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Ready to Assess Your Risk?</h3>
             <p className="text-muted-foreground mb-4">
-              Click the button to get an AI-powered analysis of your current holdings.
+              Click the button to prepare the analysis and review the prompt.
             </p>
-            <Button onClick={onAnalyze} disabled={isLoading || disabled}>
+            <Button onClick={onPrepare} disabled={isLoading || disabled}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Analyzing...
+                  Preparing...
                 </>
               ) : (
                 "Analyze Portfolio Risk"
@@ -95,7 +136,39 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
           </div>
         )}
 
-        {isLoading && (
+        {isLoading && !result && !preparedData && (
+          <div className="flex flex-col items-center justify-center text-center p-8">
+            <Loader2 className="w-16 h-16 text-primary animate-spin mb-4" />
+            <h3 className="text-lg font-semibold">Preparing Analysis...</h3>
+            <p className="text-muted-foreground">
+              Gathering data from 1inch and Moralis to build the AI prompt.
+            </p>
+          </div>
+        )}
+        
+        {preparedData && !isLoading && (
+            <Card className="bg-secondary/50">
+                 <CardHeader>
+                    <CardTitle>Confirm Analysis Prompt</CardTitle>
+                    <CardDescription>This is the exact prompt that will be sent to the AI for analysis. Review it and click continue.</CardDescription>
+                 </CardHeader>
+                 <CardContent>
+                    <ScrollArea className="h-[300px] w-full bg-background/50 rounded-md p-4 mb-4 border">
+                        <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
+                            {preparedData.prompt}
+                        </pre>
+                    </ScrollArea>
+                    <div className="flex justify-end gap-2">
+                         <Button onClick={onRestart} variant="outline">Cancel</Button>
+                         <Button onClick={onExecute} disabled={isLoading}>
+                           {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...</> : <><Forward className="mr-2 h-4 w-4" />Confirm and Continue</>}
+                         </Button>
+                    </div>
+                 </CardContent>
+            </Card>
+        )}
+
+        {isLoading && result === null && (
           <div className="flex flex-col items-center justify-center text-center p-8">
             <Loader2 className="w-16 h-16 text-primary animate-spin mb-4" />
             <h3 className="text-lg font-semibold">Analyzing Portfolio...</h3>
@@ -109,6 +182,7 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
             <div className="text-destructive-foreground bg-destructive/80 p-4 rounded-md text-center">
                 <p className="font-semibold">Analysis Failed</p>
                 <p>{error}</p>
+                 <Button onClick={onRestart} variant="secondary" className="mt-4">Try Again</Button>
             </div>
         )}
 
@@ -135,14 +209,14 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
             </Card>
             
             <div className="text-center">
-                <Button onClick={onAnalyze} variant="outline" disabled={isLoading || disabled}>
+                <Button onClick={onRestart} variant="outline" disabled={isLoading}>
                 {isLoading ? (
                     <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Re-analyzing...
                     </>
                 ) : (
-                    "Re-analyze Portfolio"
+                    "Start New Analysis"
                 )}
                 </Button>
             </div>
