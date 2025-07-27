@@ -29,13 +29,15 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
+    AlertDialogCancel,
   } from "@/components/ui/alert-dialog"
-import { ArrowDown, ChevronsRight, Loader2, Repeat, Terminal, Zap, Clock, Shield } from "lucide-react";
+import { ArrowDown, ChevronsRight, Loader2, Repeat, Terminal, Zap, Clock, Shield, Forward } from "lucide-react";
 import Image from "next/image";
 import { getQuoteAction } from "@/app/actions";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAccount } from "wagmi";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 
 interface TokenSwapProps {
@@ -71,6 +73,9 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
   const [isSwapping, setIsSwapping] = useState<boolean>(false);
   const [isSwapSuccessDialogOpen, setIsSwapSuccessDialogOpen] = useState(false);
   const [swapSuccessDetails, setSwapSuccessDetails] = useState<SwapSuccessDetails | null>(null);
+
+  const [isQuoteDebugDialogOpen, setIsQuoteDebugDialogOpen] = useState(false);
+  const [quoteDebugData, setQuoteDebugData] = useState<any>(null);
 
   const debouncedFromAmount = useDebounce(fromAmount, 500);
 
@@ -128,7 +133,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
 }, [tokens, portfolioTokens]);
 
 
-  const fetchQuote = useCallback(async () => {
+  const fetchQuote = useCallback(async (showDebug = false) => {
     if (!fromTokenData || !toTokenData || !debouncedFromAmount || isNaN(parseFloat(debouncedFromAmount)) || disabled || !address || parseFloat(debouncedFromAmount) <= 0) {
       setQuote(null);
       onQuoteResponse({});
@@ -154,11 +159,21 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
             setQuote(quoteResult.data);
         }
 
+        if (showDebug) {
+            setQuoteDebugData(quoteResult.raw);
+            setIsQuoteDebugDialogOpen(true);
+        }
+
     } catch (e) {
       const errorMessage = "Failed to fetch quote.";
       setQuoteError(errorMessage);
       setQuote(null);
-      onQuoteResponse({ error: errorMessage });
+      const rawError = { request: { from: fromTokenData, to: toTokenData, amount: debouncedFromAmount }, response: { error: errorMessage }};
+      onQuoteResponse(rawError);
+      if (showDebug) {
+        setQuoteDebugData(rawError);
+        setIsQuoteDebugDialogOpen(true);
+      }
     } finally {
       setIsFetchingQuote(false);
     }
@@ -167,12 +182,13 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
 
   useEffect(() => {
     fetchQuote();
-  }, [fetchQuote]);
+  }, [fromTokenData, toTokenData, debouncedFromAmount]);
 
   const handleFromTokenChange = (symbol: string | undefined) => {
     if (!symbol) return;
     setFromTokenSymbol(symbol);
     setFromAmount("1.0"); 
+    fetchQuote(true); // Trigger quote fetch with debug dialog
   };
 
   const handleSwapTokens = () => {
@@ -215,6 +231,34 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
     { id: 'medium', label: 'Medium', icon: Clock, color: 'text-yellow-500' },
     { id: 'slow', label: 'Slow', icon: Shield, color: 'text-blue-500' }
   ] as const;
+
+  const renderDebugContent = () => {
+    const requestData = quoteDebugData?.request;
+    const responseData = quoteDebugData?.response || (quoteDebugData && !quoteDebugData.request ? quoteDebugData : {});
+    
+    return (
+        <div className="space-y-4">
+        {requestData && (
+            <div>
+            <h4 className="text-sm font-semibold mb-2">Request</h4>
+            <ScrollArea className="h-[200px] w-full bg-secondary/50 rounded-md p-4">
+                <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
+                    {JSON.stringify(requestData, null, 2)}
+                </pre>
+            </ScrollArea>
+            </div>
+        )}
+        <div>
+            <h4 className="text-sm font-semibold mb-2">Response</h4>
+            <ScrollArea className="h-[300px] w-full bg-secondary/50 rounded-md p-4">
+            <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
+                {JSON.stringify(responseData, null, 2)}
+            </pre>
+            </ScrollArea>
+        </div>
+        </div>
+    )
+  }
 
   return (
     <>
@@ -395,6 +439,23 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
             </AlertDialogContent>
         </AlertDialog>
     )}
+
+    {quoteDebugData && (
+         <AlertDialog open={isQuoteDebugDialogOpen} onOpenChange={setIsQuoteDebugDialogOpen}>
+            <AlertDialogContent className="max-w-3xl">
+                <AlertDialogHeader>
+                    <AlertDialogTitle>1inch Fusion Quote API</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        The raw request and response from the 1inch Fusion API.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                {renderDebugContent()}
+                <AlertDialogFooter>
+                    <AlertDialogAction onClick={() => setIsQuoteDebugDialogOpen(false)}>Close</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    )}
     </>
   );
 }
@@ -402,3 +463,5 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
 const Label = (props: React.ComponentProps<"label">) => (
   <label {...props} className="text-sm font-medium text-muted-foreground" />
 );
+
+    
