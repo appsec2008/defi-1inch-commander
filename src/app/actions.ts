@@ -67,16 +67,21 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
             health: JSON.stringify(healthResult.response, null, 2),
             topTokenHoldings: JSON.stringify(topHoldings, null, 2),
         };
+        
+        // This is where the prompt template is defined in the object from ai.definePrompt
+        const promptTemplate = (analyzePortfolioRiskPrompt as any).options.prompt;
 
         // Construct the full prompt for display purposes
-        let fullPromptForDisplay = analyzePortfolioRiskPrompt.prompt || '';
-        if (typeof fullPromptForDisplay !== 'string') {
-            console.error("AI prompt template from Genkit is not a valid string.", analyzePortfolioRiskPrompt);
-            return { data: null, error: "AI prompt template from Genkit is invalid. Check server logs." };
+        let fullPromptForDisplay = promptTemplate || '';
+        if (typeof fullPromptForDisplay !== 'string' || !fullPromptForDisplay) {
+            const errorMsg = "AI prompt template from Genkit is invalid or empty. Check the flow definition.";
+            console.error(errorMsg, analyzePortfolioRiskPrompt);
+            return { data: null, error: errorMsg };
         }
 
         for (const key in analysisInput) {
-            const placeholder = `{{{${key}}}}`;
+            // A safer way to handle replacement for Handlebars-style placeholders
+            const placeholder = new RegExp(`{{{${key}}}}`, 'g');
             fullPromptForDisplay = fullPromptForDisplay.replace(placeholder, (analysisInput as any)[key]);
         }
         
