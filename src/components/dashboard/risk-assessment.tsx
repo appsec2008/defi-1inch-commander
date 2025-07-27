@@ -17,6 +17,7 @@ import { useAccount } from "wagmi";
 interface RiskAssessmentProps {
   portfolio: Asset[];
   disabled: boolean;
+  onAnalysisResponse: (response: any) => void;
 }
 
 type AnalysisResult = {
@@ -34,7 +35,7 @@ const renderMarkdown = (text: string) => {
 }
 
 
-export function RiskAssessment({ portfolio = [], disabled }: RiskAssessmentProps) {
+export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }: RiskAssessmentProps) {
   const { address } = useAccount();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +51,8 @@ export function RiskAssessment({ portfolio = [], disabled }: RiskAssessmentProps
     setResult(null);
     try {
       const analysisResult = await handleComprehensiveRiskAnalysis(address);
+      onAnalysisResponse(analysisResult.raw || {});
+
       if (analysisResult.error) {
         setError(analysisResult.error);
       } else if (analysisResult.data) {

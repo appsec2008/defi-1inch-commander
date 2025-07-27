@@ -27,6 +27,7 @@ export default function Home() {
   const [apiQuoteResponse, setApiQuoteResponse] = useState({});
   const [apiGasResponse, setApiGasResponse] = useState({});
   const [apiSpotPricesResponse, setApiSpotPricesResponse] = useState({});
+  const [apiRiskAnalysisResponse, setApiRiskAnalysisResponse] = useState({});
 
   const testAddress = '0xdac17f958d2ee523a2206206994597c13d831ec7';
   const isConnected = addressSource === 'hardcoded' || isWalletConnected;
@@ -42,6 +43,10 @@ export default function Home() {
 
   const handleGasResponse = useCallback((response: any) => {
     setApiGasResponse(response || {});
+  }, []);
+
+  const handleAnalysisResponse = useCallback((response: any) => {
+    setApiRiskAnalysisResponse(response || {});
   }, []);
 
   useEffect(() => {
@@ -88,6 +93,7 @@ export default function Home() {
         setApiQuoteResponse({});
         setApiGasResponse({});
         setApiSpotPricesResponse({});
+        setApiRiskAnalysisResponse({});
       }
     }
     fetchData();
@@ -101,12 +107,12 @@ export default function Home() {
       </CardHeader>
       <CardContent>
         <h4 className="text-sm font-semibold mb-2">Request</h4>
-        <pre className="text-xs text-muted-foreground bg-secondary/50 rounded-md p-2 mb-4 break-all">
-          {data?.request ? `${data.request.method} ${data.request.url}` : 'N/A'}
+        <pre className="text-xs text-muted-foreground bg-secondary/50 rounded-md p-2 mb-4 break-all whitespace-pre-wrap">
+          {JSON.stringify(data?.request || {}, null, 2)}
         </pre>
         <h4 className="text-sm font-semibold mb-2">Response</h4>
         <ScrollArea className="h-[300px] w-full bg-secondary/50 rounded-md p-4">
-          <pre className="text-xs text-muted-foreground">
+          <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
             {JSON.stringify(data?.response || data || {}, null, 2)}
           </pre>
         </ScrollArea>
@@ -165,7 +171,11 @@ export default function Home() {
               </Alert>
             )}
             <PortfolioOverview assets={portfolioAssets} loading={loading} isMoralisApiConfigured={isMoralisApiConfigured} />
-            <RiskAssessment portfolio={portfolioAssets} disabled={!isConnected || loading || !isMoralisApiConfigured} />
+            <RiskAssessment 
+                portfolio={portfolioAssets} 
+                disabled={!isConnected || loading || !isMoralisApiConfigured}
+                onAnalysisResponse={handleAnalysisResponse}
+            />
           </div>
           <div className="lg:col-span-1 flex flex-col gap-6">
             <TokenSwap 
@@ -179,6 +189,11 @@ export default function Home() {
         </div>
         {isConnected && (
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                {renderApiResponseCard(
+                    "AI Risk Assessment",
+                    "The context sent to the AI and its generated response.",
+                    apiRiskAnalysisResponse
+                )}
                 {renderApiResponseCard(
                     "1inch Tokens API",
                     "Fetches a list of all swappable tokens.",

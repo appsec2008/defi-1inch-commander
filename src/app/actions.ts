@@ -64,7 +64,14 @@ export async function handleComprehensiveRiskAnalysis(address: string) {
         };
 
         const analysisResult = await analyzePortfolioRisk(analysisInput);
-        return { data: analysisResult };
+        
+        return { 
+            data: analysisResult,
+            raw: {
+                request: analysisInput,
+                response: analysisResult,
+            }
+        };
 
     } catch (error) {
         console.error('Error during comprehensive risk analysis:', error);
