@@ -1,8 +1,7 @@
 'use server';
 
 import { analyzePortfolioRisk } from '@/ai/flows/analyze-portfolio-risk';
-import { getTokens, getHistory, getLiquiditySources, getPresets, getHealthCheck, getQuote, getSwap } from '@/services/1inch';
-import { getPortfolioAssets as getMoralisPortfolio } from '@/services/moralis';
+import { getTokens, getHistory, getLiquiditySources, getPresets, getHealthCheck, getQuote, getSwap, getPortfolio } from '@/services/1inch';
 import { formatUnits, parseUnits } from 'viem';
 import { estimateGas } from '@/services/ethers';
 
@@ -17,26 +16,25 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
             liquiditySourcesResult,
             presetsResult,
             healthResult,
-            moralisPortfolioResult,
+            portfolioResult,
         ] = await Promise.all([
             getHistory(address),
             getTokens(),
             getLiquiditySources(),
             getPresets(),
             getHealthCheck(),
-            getMoralisPortfolio(address), // Fetch portfolio to identify top assets
+            getPortfolio(address), 
         ]);
 
         console.log("All API calls completed.");
 
-        // Check for errors in each API call, but don't fail the whole process
         const errors = [
             { name: '1inch History', error: historyResult.error },
             { name: '1inch Tokens', error: tokensResult.error },
             { name: '1inch Liquidity Sources', error: liquiditySourcesResult.error },
             { name: '1inch Presets', error: presetsResult.error },
             { name: '1inch Health Check', error: healthResult.error },
-            { name: 'Moralis Portfolio', error: moralisPortfolioResult.error },
+            { name: '1inch Portfolio', error: portfolioResult.error },
         ].filter(result => !!result.error);
 
         if (errors.length > 0) {
@@ -45,7 +43,7 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
 
         console.log("Successfully fetched all data. Formatting context...");
 
-        const topHoldings = (moralisPortfolioResult.assets || [])
+        const topHoldings = (portfolioResult.assets || [])
             .sort((a, b) => (b.balance * b.price) - (a.balance * a.price))
             .slice(0, 5)
             .map(asset => ({
@@ -58,7 +56,7 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
         
         const analysisInput = {
             history: historyResult.response,
-            tokens: tokensResult.tokens.slice(0, 100), // Show only a subset for brevity
+            tokens: tokensResult.tokens.slice(0, 100), 
             liquiditySources: liquiditySourcesResult.response,
             presets: presetsResult.response,
             health: healthResult.response,
@@ -68,7 +66,7 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
         console.log("Preparation complete. Returning data to client.");
         return { 
             data: {
-                analysisInput: analysisInput, // This is sent to the flow
+                analysisInput: analysisInput,
                 raw: {
                     history: historyResult,
                     tokens: tokensResult,
@@ -107,7 +105,7 @@ export async function executeComprehensiveRiskAnalysis(input: any) {
 
 
 export async function getPortfolioAction(address: string) {
-  return getMoralisPortfolio(address);
+  return getPortfolio(address);
 }
 
 export async function getTokensAction() {

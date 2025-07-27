@@ -23,10 +23,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface PortfolioOverviewProps {
   assets: Asset[];
   loading: boolean;
-  isMoralisApiConfigured: boolean;
 }
 
-export function PortfolioOverview({ assets = [], loading, isMoralisApiConfigured }: PortfolioOverviewProps) {
+export function PortfolioOverview({ assets = [], loading }: PortfolioOverviewProps) {
   const totalValue = assets.reduce(
     (acc, asset) => acc + asset.balance * asset.price,
     0
@@ -127,7 +126,7 @@ export function PortfolioOverview({ assets = [], loading, isMoralisApiConfigured
             ) : (
               <TableRow>
                 <TableCell colSpan={4} className="text-center h-24">
-                  {!isMoralisApiConfigured ? 'Moralis API Key not configured.' : 'No assets found.'}
+                  No assets found.
                 </TableCell>
               </TableRow>
             )}

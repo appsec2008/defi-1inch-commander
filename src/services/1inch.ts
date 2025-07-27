@@ -1,12 +1,12 @@
 'use server';
 
-import type { Quote, Token, Swap } from "@/lib/types";
+import type { Quote, Token, Swap, Asset } from "@/lib/types";
 
 const API_BASE = "https://api.1inch.dev";
 const CHAIN_ID = "1"; // Ethereum Mainnet
 
 type ApiResult = {
-    request: { method: string, url: string };
+    request: { method: string, url: string, body?: any };
     response: any;
     error?: string;
 }
@@ -16,7 +16,10 @@ async function fetch1inch(path: string, options: RequestInit = {}): Promise<ApiR
   const url = `${API_BASE}${path}`;
   const method = options.method || 'GET';
 
-  const requestDetails = { method, url };
+  const requestDetails: ApiResult['request'] = { method, url };
+  if (options.body) {
+    requestDetails.body = JSON.parse(options.body as string);
+  }
 
   if (!apiKey || apiKey === 'YOUR_1INCH_API_KEY_HERE') {
     const errorMsg = "1inch API key is not set. Please add it to your .env file.";
@@ -56,8 +59,7 @@ export async function getTokens(): Promise<{ tokens: Token[], raw: ApiResult, er
       return { tokens: [], raw: result, error: result.error };
     }
   
-    // The response is a map of token objects, not an object with a 'tokens' key.
-    const tokenList: Token[] = Object.values(result.response.tokens).slice(0, 100).map((token: any) => ({
+    const tokenList: Token[] = Object.values(result.response.tokens || {}).map((token: any) => ({
       symbol: token.symbol,
       name: token.name,
       address: token.address,
@@ -88,7 +90,6 @@ export async function getSwap(fromTokenAddress: string, toTokenAddress: string, 
     const path = `/swap/v6.0/${CHAIN_ID}/swap?src=${fromTokenAddress}&dst=${toTokenAddress}&amount=${amount}&from=${fromAddress}&slippage=1`;
     const result = await fetch1inch(path);
 
-    // Custom error for insufficient balance to be more user-friendly
     if (result.response?.description?.includes('insufficient funds')) {
         const errorMsg = `Not enough ${fromTokenSymbol || fromTokenAddress} balance.`;
         return { swap: null, raw: result, error: errorMsg };
@@ -101,20 +102,18 @@ export async function getSwap(fromTokenAddress: string, toTokenAddress: string, 
     return { swap: { ...result.response, tx: result.response.tx }, raw: result };
 }
 
-
 export async function getSpotPrices(tokenAddresses: string[]): Promise<{ prices: {[key: string]: number}, raw: ApiResult, error?: string }> {
-    const addressesString = tokenAddresses.join(',');
-    const path = `/price/v1.1/${CHAIN_ID}?tokens=${addressesString}&currency=USD`;
-    
+    const path = `/price/v1.1/${CHAIN_ID}`;
     const result = await fetch1inch(path, {
-        method: 'GET',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokens: tokenAddresses, currency: 'USD' })
     });
   
     if (!result.response || result.error) {
       return { prices: {}, raw: result, error: result.error || 'Failed to fetch spot prices.' };
     }
   
-    // The response is an object with token addresses as keys and their USD prices as values.
     const prices: {[key: string]: number} = {};
     for (const address in result.response) {
         prices[address.toLowerCase()] = parseFloat(result.response[address]);
@@ -123,10 +122,49 @@ export async function getSpotPrices(tokenAddresses: string[]): Promise<{ prices:
     return { prices, raw: result };
 }
 
+export async function getPortfolio(address: string): Promise<{ assets: Asset[], raw: any, error?: string }> {
+    const balanceResult = await fetch1inch(`/balance/v5.2/${CHAIN_ID}/balances/${address}`);
+    
+    const rawResponses = { balance: balanceResult, tokens: {}, spotPrices: {} };
 
-export async function getPortfolio(address: string) {
-    return fetch1inch(`/portfolio/v1.0/${CHAIN_ID}/wallets/${address}`);
+    if (!balanceResult.response || balanceResult.error) {
+        return { assets: [], raw: rawResponses, error: balanceResult.error || "Failed to fetch balances" };
+    }
+
+    const balances: { [key: string]: string } = balanceResult.response;
+    const tokenAddresses = Object.keys(balances);
+
+    if (tokenAddresses.length === 0) {
+        return { assets: [], raw: rawResponses };
+    }
+    
+    const { tokens, raw: tokensRaw } = await getTokens();
+    rawResponses.tokens = tokensRaw;
+    const tokenMap = new Map<string, Token>(tokens.map(t => [t.address.toLowerCase(), t]));
+
+    const { prices, raw: pricesRaw } = await getSpotPrices(tokenAddresses);
+    rawResponses.spotPrices = pricesRaw;
+    
+    const assets: Asset[] = tokenAddresses.map(tokenAddress => {
+        const tokenInfo = tokenMap.get(tokenAddress.toLowerCase());
+        const balance = parseFloat(balances[tokenAddress]) / (10 ** (tokenInfo?.decimals || 18));
+        const price = prices[tokenAddress.toLowerCase()] || 0;
+        
+        return {
+            id: tokenAddress,
+            name: tokenInfo?.name || 'Unknown Token',
+            symbol: tokenInfo?.symbol || 'UNKNOWN',
+            icon: tokenInfo?.icon || '',
+            balance,
+            price,
+            change24h: 0, 
+        };
+    }).filter(asset => asset.balance * asset.price > 0.01) // Filter out dust
+      .sort((a, b) => (b.balance * b.price) - (a.balance * a.price));
+
+    return { assets, raw: rawResponses };
 }
+
 
 export async function getHistory(address: string) {
     return fetch1inch(`/history/v2.0/history/${address}/events`);

@@ -43,7 +43,7 @@ export default function Home() {
 
   // These checks are for UI feedback only. The actual API calls use server-side keys.
   const is1inchApiConfigured = !!process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
-  const isMoralisApiConfigured = process.env.NEXT_PUBLIC_MORALIS_API_KEY_IS_CONFIGURED === 'true';
+  const isMoralisApiConfigured = true; // Moralis is no longer used for portfolio, so we can set this to true
   
   const handleQuoteResponse = useCallback((response: any) => {
     setApiQuoteResponse(response || {});
@@ -68,17 +68,12 @@ export default function Home() {
         setLoading(true);
         const promises = [];
         
-        if (isMoralisApiConfigured) {
-          promises.push(getPortfolioAction(address));
-        } else {
-          console.log("Moralis API not configured for UI. Skipping portfolio fetch.");
-          promises.push(Promise.resolve({ assets: [], raw: {} }));
-        }
-
         if (is1inchApiConfigured) {
+          promises.push(getPortfolioAction(address));
           promises.push(getTokensAction());
         } else {
-            console.log("1inch API not configured for UI. Skipping tokens fetch.");
+          console.log("1inch API not configured for UI. Skipping fetches.");
+          promises.push(Promise.resolve({ assets: [], raw: { error: '1inch API not configured.' } }));
           promises.push(Promise.resolve({ tokens: [], raw: { error: '1inch API not configured.'}}));
         }
 
@@ -115,18 +110,13 @@ export default function Home() {
       }
     }
     fetchData();
-  }, [isConnected, address, is1inchApiConfigured, isMoralisApiConfigured]);
+  }, [isConnected, address, is1inchApiConfigured]);
 
   const renderApiResponseCard = (title: string, description: string, data: any) => {
     const isAiCard = title === "AI Risk Assessment";
     let requestData = data?.request;
     let responseData = data?.response || data || {};
 
-    // For AI card, request is a pre-formatted string. For others, it's an object.
-    const requestContent = isAiCard 
-      ? requestData 
-      : JSON.stringify(requestData || {}, null, 2);
-    
     return (
         <Card>
         <CardHeader>
@@ -193,20 +183,20 @@ export default function Home() {
         )}
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 flex flex-col gap-6">
-            {!isMoralisApiConfigured && isConnected && (
+            {!is1inchApiConfigured && isConnected && (
               <Alert variant="destructive">
                 <Terminal className="h-4 w-4" />
-                <AlertTitle>Moralis API Key Not Configured</AlertTitle>
+                <AlertTitle>1inch API Key Not Configured</AlertTitle>
                 <AlertDescription>
-                  Please add your Moralis API key to the <code>.env</code> file to see your portfolio. This feature is currently disabled.
+                  Please add your 1inch API key to the <code>.env</code> file to see your portfolio and swap.
                 </AlertDescription>
               </Alert>
             )}
-            <PortfolioOverview assets={portfolioAssets} loading={loading} isMoralisApiConfigured={isMoralisApiConfigured} />
+            <PortfolioOverview assets={portfolioAssets} loading={loading} />
             <RiskAssessment 
                 address={address}
                 portfolio={portfolioAssets} 
-                disabled={!isConnected || loading || !isMoralisApiConfigured}
+                disabled={!isConnected || loading || !is1inchApiConfigured}
                 onAnalysisResponse={handleAnalysisResponse}
             />
           </div>
@@ -232,7 +222,7 @@ export default function Home() {
                     apiQuoteResponse
                 )}
                 {renderApiResponseCard(
-                    "Moralis Spot Price API",
+                    "1inch Spot Price API",
                     "Fetches token prices for the portfolio overview.",
                     apiSpotPricesResponse
                 )}

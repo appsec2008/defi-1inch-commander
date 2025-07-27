@@ -17,7 +17,7 @@ const AnalyzePortfolioRiskInputSchema = z.object({
   liquiditySources: z.any().describe("A JSON object from the 1inch Liquidity Sources API, showing available trading protocols."),
   presets: z.any().describe("A JSON object from the 1inch Presets API, detailing network routing configurations."),
   health: z.any().describe("A JSON object from the 1inch Health Check API, indicating the status of the network services."),
-  topTokenHoldings: z.any().describe('A focused JSON array of the top token holdings by value from the user\'s wallet, including symbol, name, balance, and price. This data comes from the Moralis API and should be treated as the primary source for the user\'s portfolio.'),
+  topTokenHoldings: z.any().describe('A focused JSON array of the top token holdings by value from the user\'s wallet, including symbol, name, balance, and price. This data comes from the 1inch Balance API and should be treated as the primary source for the user\'s portfolio.'),
 });
 export type AnalyzePortfolioRiskInput = z.infer<typeof AnalyzePortfolioRiskInputSchema>;
 
@@ -35,7 +35,7 @@ const ANALYZE_PORTFOLIO_RISK_PROMPT_TEMPLATE = `You are an expert portfolio risk
 
 You will be given several pieces of data. Use all of this information to build a complete picture of the user's context and the market.
 
-**1. User's Top Token Holdings (from Moralis API):**
+**1. User's Top Token Holdings (from 1inch Balance API):**
 This is the most important data for your specific recommendations. This JSON array shows the user's most significant assets by value. Treat this as the primary portfolio data.
 \`\`\`json
 {{{json topTokenHoldings}}}
