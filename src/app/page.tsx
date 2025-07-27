@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 
 export default function Home() {
   const { address: walletAddress, isConnected: isWalletConnected } = useAccount();
-  const [addressSource, setAddressSource] = useState<'wallet' | 'hardcoded'>('wallet');
+  const [addressSource, setAddressSource] = useState<'wallet' | 'hardcoded'>('hardcoded');
   
   const [portfolioAssets, setPortfolioAssets] = useState<Asset[]>([]);
   const [tokens, setTokens] = useState<Token[]>([]);
@@ -122,13 +122,13 @@ export default function Home() {
             <Card>
                 <CardHeader>
                     <CardTitle>Connection Mode</CardTitle>
-                    <CardDescription>Select a wallet source for testing and development.</CardDescription>
+                    <CardDescription>Select a wallet source for testing and development. The test address holds a variety of common tokens like USDT, LINK, etc.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <RadioGroup value={addressSource} onValueChange={(value) => setAddressSource(value as 'wallet' | 'hardcoded')}>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="wallet" id="wallet" />
-                            <Label htmlFor="wallet">Connect Wallet</Label>
+                            <Label htmlFor="wallet">Connect Your Wallet</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="hardcoded" id="hardcoded" />

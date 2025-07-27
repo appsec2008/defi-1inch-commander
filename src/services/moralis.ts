@@ -72,36 +72,13 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
     return { assets: [], raw: rawResponses, error: nativeBalanceResult.error || erc20BalancesResult.error };
   }
 
-  const assets: Asset[] = [];
-  const tokenAddressesToPrice: string[] = [];
+  let assets: Asset[] = [];
 
-  // Collect ERC20 token addresses from the portfolio
-  if (erc20BalancesData && !erc20BalancesResult.error && Array.isArray(erc20BalancesData)) {
-    erc20BalancesData.forEach((token: any) => {
-      if (token.token_address) {
-        tokenAddressesToPrice.push(token.token_address);
-      }
-    });
-  }
-  
-  // Add WETH to get native ETH price, if it's not already in the list
-  if (!tokenAddressesToPrice.includes(WETH_ADDRESS)) {
-    tokenAddressesToPrice.push(WETH_ADDRESS);
-  }
-  
-  // Fetch prices for all collected addresses if there are any to fetch
-  let priceMap: { [key: string]: number } = {};
-  if (tokenAddressesToPrice.length > 0) {
-      const { prices, raw: rawPrices } = await getSpotPrices(tokenAddressesToPrice);
-      rawResponses.spotPrices = rawPrices;
-      priceMap = prices;
-  }
+  // Process native ETH balance first to get ETH price
+  const { prices: ethPriceResult, raw: ethPriceRaw } = await getSpotPrices([WETH_ADDRESS]);
+  rawResponses.spotPrices = ethPriceRaw; // Store the raw response for ETH price
+  const ethPrice = ethPriceResult[WETH_ADDRESS.toLowerCase()] || 0;
 
-
-  // Get the price for native ETH using the WETH address as a proxy
-  const ethPrice = priceMap[WETH_ADDRESS.toLowerCase()] || 0;
-
-  // Process native ETH balance
   if (nativeBalanceData && !nativeBalanceResult.error) {
     const ethBalance = Number(nativeBalanceData.balance) / (10 ** 18);
     if (ethBalance > 0) {
@@ -109,31 +86,63 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
             id: 'eth-native',
             name: 'Ethereum',
             symbol: 'ETH',
-            icon: 'https://cdn.moralis.io/eth/0x.png', // Default ETH icon
+            icon: 'https://cdn.moralis.io/eth/0x.png',
             balance: ethBalance,
             price: ethPrice,
-            change24h: 0, // 1inch spot price doesn't include 24h change
+            change24h: 0,
         });
     }
   }
 
-  // Process ERC20 tokens with their prices
+  // Now process ERC20 tokens
   if (erc20BalancesData && !erc20BalancesResult.error && Array.isArray(erc20BalancesData)) {
-    assets.push(...erc20BalancesData.map((asset: any) => {
-        const balance = Number(asset.balance) / (10 ** Number(asset.decimals));
-        // Find the price from the map fetched earlier
-        const price = priceMap[asset.token_address.toLowerCase()] || 0;
+    // Create a preliminary list of ERC20 assets without prices
+    const erc20Assets = erc20BalancesData.map((token: any) => {
+      const balance = Number(token.balance) / (10 ** Number(token.decimals));
+      return {
+          id: token.token_address,
+          name: token.name,
+          symbol: token.symbol,
+          icon: token.logo || '',
+          balance: balance,
+          price: 0, // Placeholder
+          change24h: 0,
+      };
+    });
 
-        return {
-            id: asset.token_address,
-            name: asset.name,
-            symbol: asset.symbol,
-            icon: asset.logo || '',
-            balance: balance,
-            price: price,
-            change24h: 0, // 1inch spot price doesn't include 24h change
-        };
+    // Heuristically sort to find most likely valuable assets to price
+    const sortedErc20Assets = erc20Assets.sort((a, b) => {
+        // Prioritize common stablecoins and WETH first
+        if (['USDT', 'USDC', 'DAI', 'WETH'].includes(a.symbol.toUpperCase())) return -1;
+        if (['USDT', 'USDC', 'DAI', 'WETH'].includes(b.symbol.toUpperCase())) return 1;
+        // Then sort by balance as a rough proxy for value
+        return b.balance - a.balance;
+    });
+
+    // Get prices for a manageable subset (e.g., top 50) of tokens
+    const tokensToPrice = sortedErc20Assets.slice(0, 50).map(a => a.id as string);
+    
+    let priceMap: { [key: string]: number } = {};
+    if (tokensToPrice.length > 0) {
+      const { prices: erc20Prices, raw: erc20PricesRaw } = await getSpotPrices(tokensToPrice);
+      priceMap = erc20Prices;
+       // Combine raw price responses for UI transparency
+       rawResponses.spotPrices = { 
+        request: {
+            method: 'GET',
+            url: `${ethPriceRaw.request.url},${erc20PricesRaw.request.url.split('?')[1]}`
+        },
+        response: { ...ethPriceRaw.response, ...erc20PricesRaw.response }
+      };
+    }
+
+    // Update ERC20 assets with fetched prices and add them to the main assets list
+    const pricedErc20Assets = erc20Assets.map(asset => ({
+        ...asset,
+        price: priceMap[asset.id.toLowerCase()] || 0,
     }));
+    
+    assets.push(...pricedErc20Assets);
   }
 
   // Filter out assets with zero or negligible value
