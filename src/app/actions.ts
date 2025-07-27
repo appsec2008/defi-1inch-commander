@@ -1,6 +1,6 @@
 'use server';
 
-import { analyzePortfolioRisk } from '@/ai/flows/analyze-portfolio-risk';
+import { analyzePortfolioRisk, prompt as analyzePortfolioRiskPrompt } from '@/ai/flows/analyze-portfolio-risk';
 import { getTokens, getPortfolio, getHistory, getLiquiditySources, getPresets, getHealthCheck, getQuote, getSwap } from '@/services/1inch';
 import { getPortfolioAssets as getMoralisPortfolio } from '@/services/moralis';
 import { formatUnits, parseUnits } from 'viem';
@@ -58,18 +58,28 @@ export async function handleComprehensiveRiskAnalysis(address: string) {
                 price: asset.price,
                 value: asset.balance * asset.price,
             }));
+        
+        const portfolioDataString = JSON.stringify(context, null, 2);
+        const topHoldingsString = JSON.stringify(topHoldings, null, 2);
 
         const analysisInput = {
-             portfolioData: JSON.stringify(context, null, 2),
-             topTokenHoldings: JSON.stringify(topHoldings, null, 2),
+             portfolioData: portfolioDataString,
+             topTokenHoldings: topHoldingsString,
         };
 
         const analysisResult = await analyzePortfolioRisk(analysisInput);
         
+        // Construct the full prompt for display
+        const fullPrompt = analyzePortfolioRiskPrompt.prompt
+            .replace('{{{portfolioData}}}', portfolioDataString)
+            .replace('{{{topTokenHoldings}}}', topHoldingsString);
+
         return { 
             data: analysisResult,
             raw: {
-                request: analysisInput,
+                request: {
+                    fullPrompt: fullPrompt
+                },
                 response: analysisResult,
             }
         };

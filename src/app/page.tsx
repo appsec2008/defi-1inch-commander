@@ -99,26 +99,35 @@ export default function Home() {
     fetchData();
   }, [isConnected, address, is1inchApiConfigured, isMoralisApiConfigured]);
 
-  const renderApiResponseCard = (title: string, description: string, data: any) => (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <h4 className="text-sm font-semibold mb-2">Request</h4>
-        <pre className="text-xs text-muted-foreground bg-secondary/50 rounded-md p-2 mb-4 break-all whitespace-pre-wrap">
-          {JSON.stringify(data?.request || {}, null, 2)}
-        </pre>
-        <h4 className="text-sm font-semibold mb-2">Response</h4>
-        <ScrollArea className="h-[300px] w-full bg-secondary/50 rounded-md p-4">
-          <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
-            {JSON.stringify(data?.response || data || {}, null, 2)}
-          </pre>
-        </ScrollArea>
-      </CardContent>
-    </Card>
-  );
+  const renderApiResponseCard = (title: string, description: string, data: any) => {
+    const isAiCard = title === "AI Risk Assessment";
+    const requestData = isAiCard ? data?.request?.fullPrompt : JSON.stringify(data?.request || {}, null, 2);
+    const responseData = isAiCard ? data?.response : (data?.response || data || {});
+    
+    return (
+        <Card>
+        <CardHeader>
+            <CardTitle>{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <h4 className="text-sm font-semibold mb-2">Request</h4>
+            <ScrollArea className="h-[200px] w-full bg-secondary/50 rounded-md p-4 mb-4">
+                <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
+                    {isAiCard ? requestData : JSON.stringify(data?.request || {}, null, 2)}
+                </pre>
+            </ScrollArea>
+
+            <h4 className="text-sm font-semibold mb-2">Response</h4>
+            <ScrollArea className="h-[300px] w-full bg-secondary/50 rounded-md p-4">
+            <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
+                {JSON.stringify(responseData, null, 2)}
+            </pre>
+            </ScrollArea>
+        </CardContent>
+        </Card>
+    );
+};
 
   return (
     <div className="flex flex-col min-h-screen">

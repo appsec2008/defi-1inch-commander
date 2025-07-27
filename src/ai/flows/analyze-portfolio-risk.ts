@@ -27,7 +27,7 @@ export async function analyzePortfolioRisk(input: AnalyzePortfolioRiskInput): Pr
   return analyzePortfolioRiskFlow(input);
 }
 
-const prompt = ai.definePrompt({
+export const prompt = ai.definePrompt({
   name: 'analyzePortfolioRiskPrompt',
   input: {schema: AnalyzePortfolioRiskInputSchema},
   output: {schema: AnalyzePortfolioRiskOutputSchema},
