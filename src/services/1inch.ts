@@ -50,7 +50,7 @@ async function fetch1inch(path: string, options: RequestInit = {}): Promise<ApiR
 }
 
 export async function getTokens(): Promise<{ tokens: Token[], raw: ApiResult, error?: string }> {
-    const result = await fetch1inch(`/token/v1.3/${CHAIN_ID}`);
+    const result = await fetch1inch(`/token/v1.2/${CHAIN_ID}`);
   
     if (!result.response || result.error) {
       return { tokens: [], raw: result, error: result.error };
@@ -125,7 +125,7 @@ export async function getSpotPrices(tokenAddresses: string[]): Promise<{ prices:
 
 
 export async function getPortfolio(address: string) {
-    return fetch1inch(`/portfolio/v1.0/1/wallets/${address}`);
+    return fetch1inch(`/portfolio/v1.0/${CHAIN_ID}/wallets/${address}`);
 }
 
 export async function getHistory(address: string) {
