@@ -38,7 +38,7 @@ export default function Home() {
   const [apiAiHealthResponse, setApiAiHealthResponse] = useState({});
 
 
-  const testAddress = '0xdac17f958d2ee523a2206206994597c13d831ec7';
+  const testAddress = '0x5555555555555555555555555555555555555555';
   const isConnected = addressSource === 'hardcoded' || isWalletConnected;
   const address = addressSource === 'hardcoded' ? testAddress : walletAddress;
 
