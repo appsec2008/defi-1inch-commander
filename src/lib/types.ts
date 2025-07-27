@@ -18,7 +18,7 @@ export type Token = {
 };
 
 export type Quote = {
-    toAmount: string;
+    dstAmount: string;
     gas: string;
     route: { name: string }[][];
 }

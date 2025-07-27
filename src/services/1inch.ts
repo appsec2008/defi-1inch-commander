@@ -76,7 +76,7 @@ export async function getQuote(fromTokenAddress: string, toTokenAddress: string,
     }
     
     const quote: Quote = {
-        toAmount: result.response.toAmount,
+        dstAmount: result.response.dstAmount,
         gas: result.response.gas,
         route: result.response.route,
     };
@@ -86,7 +86,7 @@ export async function getQuote(fromTokenAddress: string, toTokenAddress: string,
 
 export async function getSpotPrices(tokenAddresses: string[]): Promise<{ prices: {[key: string]: number}, raw: ApiResult, error?: string }> {
     const addressesString = tokenAddresses.join(',');
-    const path = `/price/v1.1/${CHAIN_ID}/${addressesString}?currency=USD`;
+    const path = `/price/v1.1/${CHAIN_ID}?tokens=${addressesString}&currency=USD`;
     
     const result = await fetch1inch(path, {
         method: 'GET',

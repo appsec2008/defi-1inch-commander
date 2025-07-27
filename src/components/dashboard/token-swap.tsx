@@ -170,7 +170,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
     }, 1500);
   };
 
-  const toAmountDisplay = isFetchingQuote ? "..." : (quote?.toAmount ? parseFloat(quote.toAmount).toFixed(5) : "");
+  const toAmountDisplay = isFetchingQuote ? "..." : (quote?.dstAmount ? parseFloat(quote.dstAmount).toFixed(5) : "");
 
   return (
     <>
@@ -331,7 +331,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
                     </div>
                     <div className="flex justify-between items-center bg-secondary/50 p-3 rounded-md">
                         <span className="text-muted-foreground">To</span>
-                        <span className="font-bold text-lg text-accent">{parseFloat(swapSuccessDetails.quote.toAmount).toFixed(5)} {swapSuccessDetails.toToken.symbol}</span>
+                        <span className="font-bold text-lg text-accent">{parseFloat(swapSuccessDetails.quote.dstAmount).toFixed(5)} {swapSuccessDetails.toToken.symbol}</span>
                     </div>
                     <div className="space-y-2 text-xs border-t pt-4">
                         <div className="flex justify-between">
