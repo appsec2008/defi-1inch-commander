@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -85,45 +86,47 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
   const is1inchApiConfigured = !!process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
 
   useEffect(() => {
-    if (tokens.length > 0 && portfolioTokens.length > 0) {
-        let defaultFromSymbol = portfolioTokens[0]?.symbol;
-  
-        // Try to find a more valuable asset to default to, excluding native ETH if other options exist
-        if (portfolio.length > 0) {
-            const sortedPortfolio = [...portfolio]
-                .filter(p => portfolioTokens.some(pt => pt.symbol === p.symbol)) // Only consider swappable portfolio assets
+    if (tokens.length > 0 && portfolio.length > 0) {
+        // Create a set of swappable token symbols for efficient lookup
+        const swappableSymbols = new Set(tokens.map(t => t.symbol));
+        // Filter portfolio assets to only include those that are swappable
+        const swappablePortfolioAssets = portfolio.filter(p => swappableSymbols.has(p.symbol));
+
+        if (swappablePortfolioAssets.length > 0) {
+            const sortedPortfolio = [...swappablePortfolioAssets]
                 .sort((a, b) => (b.balance * b.price) - (a.balance * a.price));
 
-            let highestValueAsset = sortedPortfolio[0];
+            let defaultFromAsset = sortedPortfolio[0];
             // If the highest value is native ETH and there are other ERC20s, pick the next one
-            if (highestValueAsset?.id === 'eth-native' && sortedPortfolio.length > 1) {
-                highestValueAsset = sortedPortfolio[1];
+            if (defaultFromAsset?.id === 'eth-native' && sortedPortfolio.length > 1) {
+                defaultFromAsset = sortedPortfolio[1];
             }
-            if (highestValueAsset) {
-                defaultFromSymbol = highestValueAsset.symbol;
+            
+            if (defaultFromAsset) {
+                handleFromTokenChange(defaultFromAsset.symbol);
+
+                let defaultToSymbol: string | undefined;
+                if (defaultFromAsset.symbol === 'USDT') {
+                    defaultToSymbol = tokens.find(t => t.symbol === 'USDC')?.symbol;
+                } else {
+                    defaultToSymbol = tokens.find(t => t.symbol === 'USDT')?.symbol;
+                }
+            
+                if (!defaultToSymbol || defaultToSymbol === defaultFromAsset.symbol) {
+                    defaultToSymbol = tokens.find(t => t.symbol !== defaultFromAsset.symbol)?.symbol;
+                }
+                
+                setToTokenSymbol(defaultToSymbol);
+                return;
             }
         }
-      
-        handleFromTokenChange(defaultFromSymbol);
-  
-        let defaultToSymbol: string | undefined;
-        if (defaultFromSymbol === 'USDT') {
-            defaultToSymbol = tokens.find(t => t.symbol === 'USDC')?.symbol;
-        } else {
-            defaultToSymbol = tokens.find(t => t.symbol === 'USDT')?.symbol;
-        }
-    
-        if (!defaultToSymbol || defaultToSymbol === defaultFromSymbol) {
-            defaultToSymbol = tokens.find(t => t.symbol !== defaultFromSymbol)?.symbol;
-        }
-        
-        setToTokenSymbol(defaultToSymbol);
-    } else if (tokens.length > 0) {
-        // Fallback if user has no swappable tokens in portfolio
+    } 
+    // Fallback if user has no swappable tokens in portfolio, or portfolio hasn't loaded
+    if (tokens.length > 0) {
         handleFromTokenChange('ETH');
         setToTokenSymbol('USDT');
     }
-}, [tokens, portfolio, portfolioTokens]); // Rerun when portfolioTokens is recalculated
+}, [tokens, portfolio]);
 
 
   const fetchQuoteAndGas = useCallback(async () => {
