@@ -77,18 +77,20 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
              topTokenHoldings: topHoldingsString,
         };
         
-        if (!analyzePortfolioRiskPrompt.prompt || typeof analyzePortfolioRiskPrompt.prompt !== 'string') {
-            throw new Error('AI prompt template is not a valid string.');
+        // This is the prompt template itself, not the final rendered prompt.
+        const promptTemplate = analyzePortfolioRiskPrompt.prompt;
+        if (typeof promptTemplate !== 'string') {
+            throw new Error('AI prompt template from Genkit is not a valid string.');
         }
 
-        const fullPrompt = analyzePortfolioRiskPrompt.prompt
+        const fullPromptForDisplay = promptTemplate
             .replace('{{{portfolioData}}}', portfolioDataString)
             .replace('{{{topTokenHoldings}}}', topHoldingsString);
         
         console.log("Preparation complete. Returning data to client.");
         return { 
             data: {
-                prompt: fullPrompt,
+                prompt: fullPromptForDisplay,
                 analysisInput: analysisInput,
             },
             error: null
