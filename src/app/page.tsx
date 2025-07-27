@@ -111,15 +111,9 @@ export default function Home() {
   }, [isConnected, address, is1inchApiConfigured]);
 
   const renderApiResponseCard = (title: string, description: string, data: any) => {
-    let requestData = data?.request;
-    let responseData = data?.response || data || {};
+    const requestData = data?.request;
+    const responseData = data?.response || (data && !data.request ? data : {});
   
-    // For AI card, the whole 'data' object is the 'ai' object which contains request/response.
-    if (title === "AI Risk Assessment") {
-        requestData = data?.request;
-        responseData = data?.response;
-    }
-
     return (
         <Card>
         <CardHeader>
@@ -224,8 +218,8 @@ export default function Home() {
             </div>
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {renderApiResponseCard(
-                    "1inch Quote API",
-                    "Fetches a real-time swap quote. Used in the Token Swap component.",
+                    "1inch Fusion Quote API",
+                    "Fetches a swap quote using presets via the Fusion API. Used in the Token Swap component.",
                     apiQuoteResponse
                 )}
                 {renderApiResponseCard(
