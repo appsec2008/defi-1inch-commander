@@ -20,12 +20,12 @@ export async function handleRiskAnalysis(portfolio: string) {
 export async function handleComprehensiveRiskAnalysis(address: string) {
     try {
         const [
-            portfolio,
-            history,
-            tokens,
-            liquiditySources,
-            presets,
-            health,
+            portfolioResult,
+            historyResult,
+            tokensResult,
+            liquiditySourcesResult,
+            presetsResult,
+            healthResult,
             moralisPortfolioResult,
         ] = await Promise.all([
             getPortfolio(address),
@@ -37,13 +37,14 @@ export async function handleComprehensiveRiskAnalysis(address: string) {
             getMoralisPortfolio(address), // Fetch portfolio to identify top assets
         ]);
 
+        // Extract clean data instead of raw API responses
         const context = {
-            portfolio,
-            history,
-            tokens: tokens.tokens, // we only need the token list
-            liquiditySources,
-            presets,
-            health,
+            portfolio: portfolioResult.response,
+            history: historyResult.response,
+            tokens: tokensResult.tokens, 
+            liquiditySources: liquiditySourcesResult.response,
+            presets: presetsResult.response,
+            health: healthResult.response,
         };
 
         // Identify top 5 token holdings by value

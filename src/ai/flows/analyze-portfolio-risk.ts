@@ -31,24 +31,28 @@ const prompt = ai.definePrompt({
   name: 'analyzePortfolioRiskPrompt',
   input: {schema: AnalyzePortfolioRiskInputSchema},
   output: {schema: AnalyzePortfolioRiskOutputSchema},
-  prompt: `You are an expert portfolio risk analyst and crypto trading strategist.
+  prompt: `You are an expert portfolio risk analyst and crypto trading strategist. Your goal is to provide a clear, actionable analysis for the user based on the data provided.
 
-You will analyze the user's portfolio data and provide a detailed risk summary and actionable recommendations.
+First, I will provide you with a comprehensive set of data from the 1inch Network APIs. This data includes the user's portfolio as seen by 1inch, their transaction history, a list of all swappable tokens, available liquidity sources, and the current health status of the 1inch network. Use this information to form a broad understanding of the market context and the user's general trading profile.
 
-First, consider the comprehensive data from the 1inch network for overall context:
+**1inch Network Data:**
+\`\`\`json
 {{{portfolioData}}}
+\`\`\`
 
-Now, focus your recommendations on the user's most significant assets, which are provided here:
-{{#if topTokenHoldings}}
-**Top Token Holdings (by value):**
+Next, I will provide a focused list of the user's **Top 5 Token Holdings** by current market value. This is the most important part of the analysis. Your recommendations must be tailored specifically to these assets.
+
+**User's Top 5 Token Holdings (by value):**
+\`\`\`json
 {{{topTokenHoldings}}}
-{{/if}}
+\`\`\`
 
-Please provide a detailed:
-1.  **Risk Summary**: A general portfolio risk analysis considering token volatility, liquidity, historical trading patterns, and overall market health from the 1inch data.
-2.  **Recommendations**: Provide specific, actionable trading strategies focused *directly* on the **Top Token Holdings** listed above. For each of these top tokens, suggest concrete actions like holding, swapping for a stablecoin, or diversifying. Be practical and clear. Also include general advice on token approvals and gas optimization.
+Based on all the information above, please generate the following response:
 
-Respond thoughtfully. Structure your response into the 'riskSummary' and 'recommendations' output fields. Ensure the recommendations are tailored to the specific top tokens.`,
+1.  **Risk Summary**: Write a concise summary of the overall portfolio risk. Consider factors like asset concentration, exposure to volatile assets vs. stablecoins, and any insights you can glean from their transaction history (e.g., are they a frequent trader, do they take profits, etc.).
+2.  **Recommendations**: Provide specific, actionable trading strategies focused *directly* on the **Top 5 Token Holdings** listed above. For each of these top tokens, suggest a concrete action, such as holding, swapping for a different asset (e.g., a stablecoin or another token with higher potential), or diversifying. Your recommendations should be practical and clearly justified based on the data. Include general advice on efficient trading, like optimizing gas fees or managing token approvals.
+
+Structure your response into the 'riskSummary' and 'recommendations' output fields.`,
 });
 
 const analyzePortfolioRiskFlow = ai.defineFlow(
