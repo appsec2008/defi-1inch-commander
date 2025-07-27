@@ -1,6 +1,6 @@
 'use server';
 
-import { analyzePortfolioRisk, prompt as analyzePortfolioRiskPrompt } from '@/ai/flows/analyze-portfolio-risk';
+import { analyzePortfolioRisk } from '@/ai/flows/analyze-portfolio-risk';
 import { getTokens, getPortfolio, getHistory, getLiquiditySources, getPresets, getHealthCheck, getQuote, getSwap } from '@/services/1inch';
 import { getPortfolioAssets as getMoralisPortfolio } from '@/services/moralis';
 import { formatUnits, parseUnits } from 'viem';
@@ -68,28 +68,10 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
             topTokenHoldings: JSON.stringify(topHoldings, null, 2),
         };
         
-        // This is where the prompt template is defined in the object from ai.definePrompt
-        const promptTemplate = (analyzePortfolioRiskPrompt as any).__config.prompt;
-
-        // Construct the full prompt for display purposes
-        let fullPromptForDisplay = promptTemplate || '';
-        if (typeof fullPromptForDisplay !== 'string' || !fullPromptForDisplay) {
-            const errorMsg = "AI prompt template from Genkit is invalid or empty. Check the flow definition.";
-            console.error(errorMsg, analyzePortfolioRiskPrompt);
-            return { data: null, error: errorMsg };
-        }
-
-        for (const key in analysisInput) {
-            // A safer way to handle replacement for Handlebars-style placeholders
-            const placeholder = new RegExp(`{{{${key}}}}`, 'g');
-            fullPromptForDisplay = fullPromptForDisplay.replace(placeholder, (analysisInput as any)[key]);
-        }
-        
         console.log("Preparation complete. Returning data to client.");
         return { 
             data: {
                 analysisInput: analysisInput,
-                fullPromptForDisplay: fullPromptForDisplay,
                 raw: {
                     portfolio: portfolioResult,
                     history: historyResult,

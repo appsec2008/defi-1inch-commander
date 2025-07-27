@@ -39,7 +39,6 @@ type AnalysisResult = {
 
 type PreparedData = {
     analysisInput: any;
-    fullPromptForDisplay: string;
     raw: any;
 } | null;
 
@@ -105,7 +104,7 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
     
     try {
       const analysisResult = await executeComprehensiveRiskAnalysis(preparedData);
-      onAnalysisResponse({ raw: preparedData.raw, ai: { ...analysisResult.raw, request: preparedData.fullPromptForDisplay } });
+      onAnalysisResponse({ raw: preparedData.raw, ai: { ...analysisResult.raw, request: preparedData.analysisInput } });
 
       if (analysisResult.error) {
         setError(analysisResult.error);
@@ -225,12 +224,12 @@ export function RiskAssessment({ portfolio = [], disabled, onAnalysisResponse }:
             <AlertDialogHeader>
                 <AlertDialogTitle>Confirm AI Analysis Input</AlertDialogTitle>
                 <AlertDialogDescription>
-                    This is the exact prompt and data that will be sent to the AI for analysis. Review it and click confirm to continue.
+                    This is the data that will be sent to the AI for analysis. Review it and click confirm to continue.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <ScrollArea className="h-[50vh] w-full bg-secondary/50 rounded-md p-4 border">
                 <pre className="text-xs text-muted-foreground whitespace-pre-wrap">
-                    {preparedData?.fullPromptForDisplay}
+                    {JSON.stringify(preparedData?.analysisInput, null, 2)}
                 </pre>
             </ScrollArea>
             <AlertDialogFooter>
