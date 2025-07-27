@@ -1,9 +1,11 @@
 'use server';
 
 import { analyzePortfolioRisk } from '@/ai/flows/analyze-portfolio-risk';
-import { getTokens, getPortfolio, getHistory, getLiquiditySources, getPresets, getHealthCheck, getQuote } from '@/services/1inch';
+import { getTokens, getPortfolio, getHistory, getLiquiditySources, getPresets, getHealthCheck, getQuote, getSwap } from '@/services/1inch';
 import { getPortfolioAssets as getMoralisPortfolio } from '@/services/moralis';
 import { formatUnits, parseUnits } from 'viem';
+import { estimateGas } from '@/services/ethers';
+
 
 export async function handleRiskAnalysis(portfolio: string) {
   try {
@@ -99,6 +101,36 @@ export async function getQuoteAction(fromToken: { address: string, decimals: num
         return { data: null, error: 'Failed to get quote.', raw };
     } catch (e: any) {
         console.error("Quote Action Error:", e);
+        return { data: null, error: e.message || 'An unexpected error occurred.', raw: {} };
+    }
+}
+
+
+export async function getGasEstimateAction(fromToken: { address: string, decimals: number }, toToken: { address: string, decimals: number }, fromAmount: string, fromAddress: string) {
+    if (!fromAmount || isNaN(parseFloat(fromAmount)) || parseFloat(fromAmount) <= 0) {
+        return { data: null, error: "Invalid amount", raw: {} };
+    }
+    try {
+        const amountInSmallestUnit = parseUnits(fromAmount, fromToken.decimals);
+
+        // 1. Get swap data (which includes the tx object)
+        const { swap, raw: swapRaw, error: swapError } = await getSwap(fromToken.address, toToken.address, amountInSmallestUnit.toString(), fromAddress);
+
+        if (swapError) {
+            return { data: null, error: swapError, raw: swapRaw };
+        }
+
+        if (!swap || !swap.tx) {
+            return { data: null, error: 'Failed to get swap data for gas estimation.', raw: swapRaw };
+        }
+
+        // 2. Estimate gas using the tx object
+        const gas = await estimateGas(swap.tx);
+        
+        return { data: { gas }, raw: swapRaw, error: null };
+
+    } catch (e: any) {
+        console.error("Gas Estimate Action Error:", e);
         return { data: null, error: e.message || 'An unexpected error occurred.', raw: {} };
     }
 }

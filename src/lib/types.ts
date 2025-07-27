@@ -19,6 +19,18 @@ export type Token = {
 
 export type Quote = {
     dstAmount: string;
-    gas: string;
     route: { name: string }[][];
+}
+
+export type SwapTransaction = {
+    from: string;
+    to: string;
+    data: string;
+    value: string;
+    gas: number;
+    gasPrice: string;
+}
+
+export type Swap = {
+    tx: SwapTransaction;
 }

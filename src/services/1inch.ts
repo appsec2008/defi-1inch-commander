@@ -1,6 +1,6 @@
 'use server';
 
-import type { Quote, Token } from "@/lib/types";
+import type { Quote, Token, Swap } from "@/lib/types";
 
 const API_BASE = "https://api.1inch.dev";
 const CHAIN_ID = "1"; // Ethereum Mainnet
@@ -77,12 +77,23 @@ export async function getQuote(fromTokenAddress: string, toTokenAddress: string,
     
     const quote: Quote = {
         dstAmount: result.response.dstAmount,
-        gas: result.response.gas,
         route: result.response.route,
     };
     
     return { quote, raw: result };
 }
+
+export async function getSwap(fromTokenAddress: string, toTokenAddress: string, amount: string, fromAddress: string): Promise<{ swap: Swap | null, raw: ApiResult, error?: string }> {
+    const path = `/swap/v6.0/${CHAIN_ID}/swap?src=${fromTokenAddress}&dst=${toTokenAddress}&amount=${amount}&from=${fromAddress}&slippage=1`;
+    const result = await fetch1inch(path);
+
+    if (!result.response || result.error) {
+        return { swap: null, raw: result, error: result.error || result.response?.description };
+    }
+
+    return { swap: { tx: result.response.tx }, raw: result };
+}
+
 
 export async function getSpotPrices(tokenAddresses: string[]): Promise<{ prices: {[key: string]: number}, raw: ApiResult, error?: string }> {
     const addressesString = tokenAddresses.join(',');

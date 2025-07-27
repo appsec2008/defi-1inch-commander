@@ -31,7 +31,7 @@ import {
   } from "@/components/ui/alert-dialog"
 import { ArrowDown, ChevronsRight, Loader2, Repeat, Terminal } from "lucide-react";
 import Image from "next/image";
-import { getQuoteAction } from "@/app/actions";
+import { getQuoteAction, getGasEstimateAction } from "@/app/actions";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAccount } from "wagmi";
 
@@ -40,6 +40,7 @@ interface TokenSwapProps {
   portfolio: Asset[];
   disabled: boolean;
   onQuoteResponse: (response: any) => void;
+  onGasResponse: (response: any) => void;
 }
 
 type SwapSuccessDetails = {
@@ -48,10 +49,11 @@ type SwapSuccessDetails = {
     toToken: Token;
     fromAmount: string;
     txHash: string;
+    gas: string | null;
 }
 
-export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteResponse }: TokenSwapProps) {
-  const { isConnected } = useAccount();
+export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteResponse, onGasResponse }: TokenSwapProps) {
+  const { address, isConnected } = useAccount();
   const [fromTokenSymbol, setFromTokenSymbol] = useState<string | undefined>();
   const [toTokenSymbol, setToTokenSymbol] = useState<string | undefined>();
   const [fromAmount, setFromAmount] = useState<string>("1.0");
@@ -59,6 +61,11 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
   const [quote, setQuote] = useState<Quote | null>(null);
   const [isFetchingQuote, setIsFetchingQuote] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+
+  const [gas, setGas] = useState<string | null>(null);
+  const [isFetchingGas, setIsFetchingGas] = useState(false);
+  const [gasError, setGasError] = useState<string | null>(null);
+
 
   const [isSwapping, setIsSwapping] = useState<boolean>(false);
   const [isSwapSuccessDialogOpen, setIsSwapSuccessDialogOpen] = useState(false);
@@ -115,36 +122,63 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
   }, [tokens, portfolio]);
 
 
-  const fetchQuote = useCallback(async () => {
-    if (!fromTokenData || !toTokenData || !debouncedFromAmount || isNaN(parseFloat(debouncedFromAmount)) || disabled) {
+  const fetchQuoteAndGas = useCallback(async () => {
+    if (!fromTokenData || !toTokenData || !debouncedFromAmount || isNaN(parseFloat(debouncedFromAmount)) || disabled || !address) {
       setQuote(null);
+      setGas(null);
       onQuoteResponse(null);
+      onGasResponse(null);
       return;
     }
 
     setIsFetchingQuote(true);
+    setIsFetchingGas(true);
     setQuoteError(null);
+    setGasError(null);
+
     try {
-      const result = await getQuoteAction(fromTokenData, toTokenData, debouncedFromAmount);
-      onQuoteResponse(result.raw); // Pass raw response to parent
-      if (result.error) {
-        setQuoteError(result.error);
-        setQuote(null);
-      } else if (result.data) {
-        setQuote(result.data);
-      }
+        // Fetch Quote and Gas in parallel
+        const [quoteResult, gasResult] = await Promise.all([
+            getQuoteAction(fromTokenData, toTokenData, debouncedFromAmount),
+            getGasEstimateAction(fromTokenData, toTokenData, debouncedFromAmount, address)
+        ]);
+        
+        // Handle Quote Response
+        onQuoteResponse(quoteResult.raw);
+        if (quoteResult.error) {
+            setQuoteError(quoteResult.error);
+            setQuote(null);
+        } else if (quoteResult.data) {
+            setQuote(quoteResult.data);
+        }
+
+        // Handle Gas Response
+        onGasResponse(gasResult.raw);
+        if (gasResult.error) {
+            setGasError(gasResult.error);
+            setGas(null);
+        } else if (gasResult.data) {
+            setGas(gasResult.data.gas);
+        }
+
     } catch (e) {
-      setQuoteError("Failed to fetch quote.");
+      const errorMessage = "Failed to fetch quote and gas.";
+      setQuoteError(errorMessage);
+      setGasError(errorMessage);
       setQuote(null);
-      onQuoteResponse({ error: "Failed to fetch quote." });
+      setGas(null);
+      onQuoteResponse({ error: errorMessage });
+      onGasResponse({ error: errorMessage });
     } finally {
       setIsFetchingQuote(false);
+      setIsFetchingGas(false);
     }
-  }, [fromTokenData, toTokenData, debouncedFromAmount, disabled, onQuoteResponse]);
+  }, [fromTokenData, toTokenData, debouncedFromAmount, disabled, onQuoteResponse, onGasResponse, address]);
+
 
   useEffect(() => {
-    fetchQuote();
-  }, [fetchQuote]);
+    fetchQuoteAndGas();
+  }, [fetchQuoteAndGas]);
 
   const handleSwapTokens = () => {
     const temp = fromTokenSymbol;
@@ -164,13 +198,15 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
           fromToken: fromTokenData,
           toToken: toTokenData,
           fromAmount,
-          txHash: simulatedTxHash
+          txHash: simulatedTxHash,
+          gas,
       });
       setIsSwapSuccessDialogOpen(true);
     }, 1500);
   };
 
   const toAmountDisplay = isFetchingQuote ? "..." : (quote?.dstAmount ? parseFloat(quote.dstAmount).toFixed(5) : "");
+  const isFetching = isFetchingQuote || isFetchingGas;
 
   return (
     <>
@@ -262,13 +298,13 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
           </div>
         </div>
 
-        {quoteError && <Alert variant="destructive"><AlertDescription>{quoteError}</AlertDescription></Alert>}
+        {(quoteError || gasError) && <Alert variant="destructive"><AlertDescription>{quoteError || gasError}</AlertDescription></Alert>}
 
         <div className="space-y-3 pt-2">
           <h4 className="text-sm font-medium">Optimal Route</h4>
           <div className="flex items-center justify-between text-sm p-3 rounded-lg bg-secondary/50 min-h-[44px]">
              {disabled ? <span className="text-muted-foreground">Connect wallet & configure API</span> : 
-              isFetchingQuote ? <Loader2 className="w-4 h-4 animate-spin" /> : 
+              isFetching ? <Loader2 className="w-4 h-4 animate-spin" /> : 
               quote?.route ? (
                 <div className="flex items-center gap-1.5 font-mono flex-wrap text-xs">
                   <span>{fromTokenSymbol}</span>
@@ -284,18 +320,18 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
                   ))}
                 </div>
             ) : <span className="text-muted-foreground text-xs">Enter an amount to see route</span>}
-            {!disabled && !isFetchingQuote && quote && <span className="text-accent font-semibold">100%</span>}
+            {!disabled && !isFetching && quote && <span className="text-accent font-semibold">100%</span>}
           </div>
            <div className="text-xs text-muted-foreground space-y-1">
              <div className="flex justify-between">
                 <span>Price:</span>
                 <span className="font-mono">
-                    {isFetchingQuote ? '...' : quote && fromAmount && parseFloat(fromAmount) > 0 ? `1 ${fromTokenSymbol} = ${(parseFloat(toAmountDisplay)/parseFloat(fromAmount)).toFixed(4)} ${toTokenSymbol}` : 'N/A'}
+                    {isFetching ? '...' : quote && fromAmount && parseFloat(fromAmount) > 0 ? `1 ${fromTokenSymbol} = ${(parseFloat(toAmountDisplay)/parseFloat(fromAmount)).toFixed(4)} ${toTokenSymbol}` : 'N/A'}
                 </span>
              </div>
              <div className="flex justify-between">
                 <span>Gas Fee (est.):</span>
-                <span className="font-mono">{isFetchingQuote ? '...' : quote?.gas ? `~${quote.gas} units` : 'N/A'}</span>
+                <span className="font-mono">{isFetchingGas ? '...' : gas ? `~${gas} units` : 'N/A'}</span>
              </div>
            </div>
         </div>
@@ -305,9 +341,9 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
           size="lg"
           className="w-full font-bold"
           onClick={handleExecuteSwap}
-          disabled={isSwapping || isFetchingQuote || !quote || !fromAmount || disabled}
+          disabled={isSwapping || isFetching || !quote || !fromAmount || disabled}
         >
-          {isSwapping ? <><Loader2 className="animate-spin mr-2" />Swapping...</> : isFetchingQuote ? <><Loader2 className="mr-2 animate-spin" />Fetching Quote...</> : "Swap (Simulated)"}
+          {isSwapping ? <><Loader2 className="animate-spin mr-2" />Swapping...</> : isFetching ? <><Loader2 className="mr-2 animate-spin" />Fetching...</> : "Swap (Simulated)"}
         </Button>
       </CardContent>
     </Card>
@@ -340,7 +376,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Est. Gas Fee:</span>
-                            <span className="font-mono">{swapSuccessDetails.quote?.gas ? `~${swapSuccessDetails.quote.gas} units` : '~150000 units'}</span>
+                            <span className="font-mono">{swapSuccessDetails.gas ? `~${swapSuccessDetails.gas} units` : '~150000 units'}</span>
                         </div>
                         <div className="flex justify-between items-start">
                             <span className="text-muted-foreground pt-0.5">Route:</span>

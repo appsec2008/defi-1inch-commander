@@ -19,8 +19,8 @@ export default function Home() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiTokensResponse, setApiTokensResponse] = useState({});
-  const [apiPortfolioResponse, setApiPortfolioResponse] = useState({});
   const [apiQuoteResponse, setApiQuoteResponse] = useState({});
+  const [apiGasResponse, setApiGasResponse] = useState({});
 
 
   // These checks are for UI feedback only. The actual API calls use server-side keys.
@@ -29,6 +29,10 @@ export default function Home() {
   
   const handleQuoteResponse = useCallback((response: any) => {
     setApiQuoteResponse(response || {});
+  }, []);
+
+  const handleGasResponse = useCallback((response: any) => {
+    setApiGasResponse(response || {});
   }, []);
 
   useEffect(() => {
@@ -61,7 +65,6 @@ export default function Home() {
         }
         
         setApiTokensResponse(tokensResult.raw || {});
-        setApiPortfolioResponse(portfolioResult.raw || {});
 
         setLoading(false);
       } else {
@@ -69,8 +72,8 @@ export default function Home() {
         setPortfolioAssets([]);
         setTokens([]);
         setApiTokensResponse({});
-        setApiPortfolioResponse({});
         setApiQuoteResponse({});
+        setApiGasResponse({});
       }
     }
     fetchData();
@@ -136,16 +139,12 @@ export default function Home() {
                 portfolio={portfolioAssets} 
                 disabled={!isConnected || loading || !is1inchApiConfigured}
                 onQuoteResponse={handleQuoteResponse}
+                onGasResponse={handleGasResponse}
             />
           </div>
         </div>
         {isConnected && (
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-                {renderApiResponseCard(
-                    "Moralis Wallet API",
-                    "Fetches native and ERC20 token balances.",
-                    apiPortfolioResponse
-                )}
                 {renderApiResponseCard(
                     "1inch Tokens API",
                     "Fetches a list of all swappable tokens.",
@@ -153,8 +152,13 @@ export default function Home() {
                 )}
                 {renderApiResponseCard(
                     "1inch Quote API",
-                    "Fetches swap quotes and gas estimates.",
+                    "Fetches a real-time swap quote.",
                     apiQuoteResponse
+                )}
+                {renderApiResponseCard(
+                    "1inch Swap API (for Gas)",
+                    "Fetches transaction data to estimate gas.",
+                    apiGasResponse
                 )}
             </div>
         )}
