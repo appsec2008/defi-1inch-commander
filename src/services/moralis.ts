@@ -113,8 +113,8 @@ export async function getPortfolioAssets(address: string): Promise<{ assets: Ass
     // Heuristically sort to find most likely valuable assets to price
     const sortedErc20Assets = erc20Assets.sort((a, b) => {
         // Prioritize common stablecoins and WETH first
-        if (['USDT', 'USDC', 'DAI', 'WETH'].includes(a.symbol.toUpperCase())) return -1;
-        if (['USDT', 'USDC', 'DAI', 'WETH'].includes(b.symbol.toUpperCase())) return 1;
+        if (a.symbol && ['USDT', 'USDC', 'DAI', 'WETH'].includes(a.symbol.toUpperCase())) return -1;
+        if (b.symbol && ['USDT', 'USDC', 'DAI', 'WETH'].includes(b.symbol.toUpperCase())) return 1;
         // Then sort by balance as a rough proxy for value
         return b.balance - a.balance;
     });
