@@ -78,55 +78,49 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
   const toTokenData = useMemo(() => tokens.find(t => t.symbol === toTokenSymbol), [tokens, toTokenSymbol]);
   
   const portfolioTokens = useMemo(() => {
-    const portfolioSymbols = new Set(portfolio.map(a => a.symbol));
-    return tokens.filter(t => portfolioSymbols.has(t.symbol));
+    const swappableSymbols = new Set(tokens.map(t => t.symbol));
+    const portfolioAssets = portfolio.filter(p => swappableSymbols.has(p.symbol));
+    
+    // Enrich portfolio assets with token data like address and decimals
+    return portfolioAssets.map(asset => {
+        const tokenInfo = tokens.find(t => t.symbol === asset.symbol);
+        return {
+            ...asset,
+            address: tokenInfo?.address || '',
+            decimals: tokenInfo?.decimals || 18,
+        };
+    }).sort((a,b) => (b.balance * b.price) - (a.balance * a.price));
+
   }, [tokens, portfolio]);
 
 
   const is1inchApiConfigured = !!process.env.NEXT_PUBLIC_ONE_INCH_API_KEY && process.env.NEXT_PUBLIC_ONE_INCH_API_KEY !== 'YOUR_1INCH_API_KEY_HERE';
 
   useEffect(() => {
-    if (tokens.length > 0 && portfolio.length > 0) {
-        // Create a set of swappable token symbols for efficient lookup
-        const swappableSymbols = new Set(tokens.map(t => t.symbol));
-        // Filter portfolio assets to only include those that are swappable
-        const swappablePortfolioAssets = portfolio.filter(p => swappableSymbols.has(p.symbol));
-
-        if (swappablePortfolioAssets.length > 0) {
-            const sortedPortfolio = [...swappablePortfolioAssets]
-                .sort((a, b) => (b.balance * b.price) - (a.balance * a.price));
-
-            let defaultFromAsset = sortedPortfolio[0];
-            // If the highest value is native ETH and there are other ERC20s, pick the next one
-            if (defaultFromAsset?.id === 'eth-native' && sortedPortfolio.length > 1) {
-                defaultFromAsset = sortedPortfolio[1];
-            }
-            
-            if (defaultFromAsset) {
-                handleFromTokenChange(defaultFromAsset.symbol);
-
-                let defaultToSymbol: string | undefined;
-                if (defaultFromAsset.symbol === 'USDT') {
-                    defaultToSymbol = tokens.find(t => t.symbol === 'USDC')?.symbol;
-                } else {
-                    defaultToSymbol = tokens.find(t => t.symbol === 'USDT')?.symbol;
-                }
-            
-                if (!defaultToSymbol || defaultToSymbol === defaultFromAsset.symbol) {
-                    defaultToSymbol = tokens.find(t => t.symbol !== defaultFromAsset.symbol)?.symbol;
-                }
-                
-                setToTokenSymbol(defaultToSymbol);
-                return;
-            }
+    if (portfolioTokens.length > 0) {
+        const defaultFromAsset = portfolioTokens[0];
+        if (defaultFromAsset?.symbol) {
+             handleFromTokenChange(defaultFromAsset.symbol);
         }
-    } 
-    // Fallback if user has no swappable tokens in portfolio, or portfolio hasn't loaded
-    if (tokens.length > 0) {
+
+        let defaultToSymbol: string | undefined;
+        if (defaultFromAsset?.symbol === 'USDT') {
+            defaultToSymbol = tokens.find(t => t.symbol === 'USDC')?.symbol;
+        } else {
+            defaultToSymbol = tokens.find(t => t.symbol === 'USDT')?.symbol;
+        }
+    
+        if (!defaultToSymbol || defaultToSymbol === defaultFromAsset?.symbol) {
+            defaultToSymbol = tokens.find(t => t.symbol !== defaultFromAsset?.symbol)?.symbol;
+        }
+        
+        setToTokenSymbol(defaultToSymbol);
+    } else if (tokens.length > 0) {
+        // Fallback if user has no swappable tokens in portfolio
         handleFromTokenChange('ETH');
         setToTokenSymbol('USDT');
     }
-}, [tokens, portfolio]);
+}, [portfolioTokens, tokens]);
 
 
   const fetchQuoteAndGas = useCallback(async () => {
