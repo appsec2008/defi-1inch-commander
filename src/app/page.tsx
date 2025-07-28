@@ -219,7 +219,7 @@ export default function Home() {
             </div>
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {renderApiResponseCard(
-                    "1inch Fusion Quote API",
+                    "1inch Fusion Quote API with Request and Respone Fully Displayed!!!!",
                     "Fetches a swap quote using presets via the Fusion API. Used in the Token Swap component.",
                     apiQuoteResponse
                 )}
