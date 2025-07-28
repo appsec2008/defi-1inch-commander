@@ -24,7 +24,7 @@ export default function Home() {
   const [tokens, setTokens] = useState<Token[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiTokensResponse, setApiTokensResponse] = useState({});
-  const [apiQuoteResponse, setApiQuoteResponse] = useState({});
+  const [apiQuoteResponse, setApiQuoteResponse] = useState<any>({});
   const [apiGasResponse, setApiGasResponse] = useState({});
   const [apiPortfolioResponse, setApiPortfolioResponse] = useState({});
   const [apiRiskAnalysisResponse, setApiRiskAnalysisResponse] = useState({});
