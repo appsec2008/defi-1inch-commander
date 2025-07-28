@@ -122,7 +122,7 @@ export default function Home() {
             <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
-            {requestData && (
+            {requestData && Object.keys(requestData).length > 0 && (
                 <>
                 <h4 className="text-sm font-semibold mb-2">Request</h4>
                 <ScrollArea className="h-[200px] w-full bg-secondary/50 rounded-md p-4 mb-4">
@@ -215,7 +215,7 @@ export default function Home() {
         {isConnected && (
             <>
             <div className="max-w-7xl mx-auto mt-6">
-                <h2 className="text-xl font-bold font-headline mb-4">Swap API Responses</h2>
+                <h2 className="text-xl font-bold font-headline mb-4">Live API Responses</h2>
             </div>
             <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {renderApiResponseCard(
