@@ -113,8 +113,8 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
             defaultToSymbol = 'USDC';
         } else if (usdt && defaultFromAsset?.symbol !== 'USDT') {
             defaultToSymbol = 'USDT';
-        } else {
-            defaultToSymbol = tokens.find(t => t.symbol !== defaultFromAsset?.symbol)?.symbol;
+        } else if (tokens.find(t => t.symbol !== defaultFromAsset.symbol)) {
+            defaultToSymbol = tokens.find(t => t.symbol !== defaultFromAsset.symbol)?.symbol;
         }
         
         setToTokenSymbol(defaultToSymbol);
@@ -412,3 +412,5 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
 const Label = (props: React.ComponentProps<"label">) => (
   <label {...props} className="text-sm font-medium text-muted-foreground" />
 );
+
+    

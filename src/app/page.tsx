@@ -112,7 +112,6 @@ export default function Home() {
   }, [isConnected, address, is1inchApiConfigured]);
 
   const renderApiResponseCard = (title: string, description: string, data: any) => {
-    // This function is now more robust to find the request and response data
     const requestData = data?.request;
     const responseData = data?.response || (data && !data.request ? data : {});
   
@@ -261,3 +260,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
