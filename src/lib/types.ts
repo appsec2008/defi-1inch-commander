@@ -48,8 +48,8 @@ export type FusionPreset = {
 
 export type FusionQuote = {
     quoteId: string;
-    srcTokenAmount: string;
-    dstTokenAmount: string;
+    fromTokenAmount: string;
+    toTokenAmount: string;
     presets: {
         fast: FusionPreset;
         medium: FusionPreset;

@@ -11,19 +11,25 @@ const PROMPT_TEMPLATE_FOR_DISPLAY = `You are an expert portfolio risk analyst an
 
 You will be given several pieces of data, each from a specific 1inch API endpoint. Use all of this information to build a complete picture of the user's context and the market.
 
-**1. 1inch Portfolio API Data:**
-This JSON object shows the user's wallet balances from the 1inch perspective.
+**1. User's Top Token Holdings (Derived from 1inch Balance API):**
+This is the most important data for your specific recommendations. This JSON array shows the user's most significant assets by value. Treat this as the primary portfolio data for making concrete suggestions.
 \`\`\`json
-{{{portfolio}}}
+{{{json topTokenHoldings}}}
 \`\`\`
 
-**2. 1inch History API Data:**
+**2. Full Portfolio (from 1inch Balance API):**
+This JSON object provides the complete list of all token balances for the user's wallet. Use this to understand the full scope and diversity of the portfolio, including long-tail assets.
+\`\`\`json
+{{{json fullPortfolio}}}
+\`\`\`
+
+**3. 1inch History API Data:**
 This JSON object lists the user's recent transaction history. Analyze it for trading frequency, patterns, and risk tolerance.
 \`\`\`json
 {{{history}}}
 \`\`\`
 
-**3. 1inch Liquidity Sources & Presets API Data:**
+**4. 1inch Liquidity Sources & Presets API Data:**
 These JSON objects detail the available trading protocols and routing configurations on the network. This provides context about the current trading environment.
 Liquidity Sources:
 \`\`\`json
@@ -79,14 +85,16 @@ export async function prepareComprehensiveRiskAnalysis(address: string) {
         console.log("Successfully fetched all data. Formatting context...");
         
         const analysisInput = {
-            portfolio: portfolioResult.raw,
+            topTokenHoldings: portfolioResult.assets,
+            fullPortfolio: portfolioResult.raw,
             history: historyResult.response,
             liquiditySources: liquiditySourcesResult.response,
             presets: presetsResult.response,
         };
 
         const fullPromptForDisplay = PROMPT_TEMPLATE_FOR_DISPLAY
-            .replace('{{{portfolio}}}', JSON.stringify(analysisInput.portfolio, null, 2))
+            .replace('{{{json topTokenHoldings}}}', JSON.stringify(analysisInput.topTokenHoldings, null, 2))
+            .replace('{{{json fullPortfolio}}}', JSON.stringify(analysisInput.fullPortfolio, null, 2))
             .replace('{{{history}}}', JSON.stringify(analysisInput.history, null, 2))
             .replace('{{{liquiditySources}}}', JSON.stringify(analysisInput.liquiditySources, null, 2))
             .replace('{{{presets}}}', JSON.stringify(analysisInput.presets, null, 2));
@@ -154,7 +162,7 @@ export async function getQuoteAction(fromToken: { address: string, decimals: num
             return { data: null, error, raw };
         }
         
-        if (quote && quote.dstTokenAmount) {
+        if (quote && quote.toTokenAmount) {
             const formatPreset = (preset: any) => {
                 if (!preset) return preset;
                 return {
@@ -166,7 +174,7 @@ export async function getQuoteAction(fromToken: { address: string, decimals: num
             }
             const formattedQuote = {
                 ...quote,
-                dstTokenAmount: formatUnits(BigInt(quote.dstTokenAmount), toToken.decimals),
+                toTokenAmount: formatUnits(BigInt(quote.toTokenAmount), toToken.decimals),
                 presets: {
                     fast: formatPreset(quote.presets.fast),
                     medium: formatPreset(quote.presets.medium),

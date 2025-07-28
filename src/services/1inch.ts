@@ -77,17 +77,15 @@ export async function getTokens(): Promise<{ tokens: Token[], raw: ApiResult, er
 
 export async function getQuote(fromTokenAddress: string, toTokenAddress: string, amount: string, walletAddress: string): Promise<{ quote: FusionQuote | null, raw: ApiResult, error?: string }> {
     const params = new URLSearchParams({
-        srcChain: CHAIN_ID,
-        dstChain: CHAIN_ID,
-        srcTokenAddress: fromTokenAddress,
-        dstTokenAddress: toTokenAddress,
+        fromTokenAddress: fromTokenAddress,
+        toTokenAddress: toTokenAddress,
         amount: amount,
         walletAddress: walletAddress,
         enableEstimate: 'true',
     });
 
-    const path = `/fusion-plus/quoter/v1.0/quote/receive?${params.toString()}`;
-    const result = await fetch1inch(path, { method: 'POST' });
+    const path = `/fusion/quoter/v2.0/${CHAIN_ID}/quote/receive?${params.toString()}`;
+    const result = await fetch1inch(path);
     
     if (!result.response || result.error) {
         return { quote: null, raw: result, error: result.error || result.response?.description };
