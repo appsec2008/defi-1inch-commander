@@ -167,9 +167,9 @@ export async function getQuoteAction(fromToken: { address: string, decimals: num
                 if (!preset) return preset;
                 return {
                     ...preset,
-                    auctionStartAmount: preset.auctionStartAmount ? formatUnits(BigInt(preset.auctionStartAmount), toToken.decimals) : undefined,
-                    auctionEndAmount: preset.auctionEndAmount ? formatUnits(BigInt(preset.auctionEndAmount), toToken.decimals) : undefined,
-                    startAmount: preset.startAmount ? formatUnits(BigInt(preset.startAmount), toToken.decimals) : undefined,
+                    auctionEndAmount: preset.auctionEndAmount ? formatUnits(BigInt(preset.auctionEndAmount), toToken.decimals) : '0',
+                    auctionStartAmount: preset.auctionStartAmount ? formatUnits(BigInt(preset.auctionStartAmount), toToken.decimals) : '0',
+                    startAmount: preset.startAmount ? formatUnits(BigInt(preset.startAmount), toToken.decimals) : '0',
                 }
             }
             const formattedQuote = {

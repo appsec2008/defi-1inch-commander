@@ -44,6 +44,14 @@ export type FusionPreset = {
     auctionEndAmount: string;
     startAmount: string;
     points: [number, number][];
+    bankFee: string;
+    initialRateBump: number;
+    allowPartialFills: boolean;
+    allowMultipleFills: boolean;
+    gasCost?: {
+        gasBumpEstimate: number;
+        gasPriceEstimate: string;
+    }
 };
 
 export type FusionQuote = {
