@@ -39,7 +39,7 @@ export type Swap = Quote & {
 
 // Classic Swap Quote
 export type SwapQuote = {
-    toAmount: string;
+    dstAmount: string;
     gas: number;
 }
 

@@ -162,10 +162,10 @@ export async function getQuoteAction(fromToken: { address: string, decimals: num
             return { data: null, error, raw };
         }
         
-        if (quote && quote.toAmount) {
+        if (quote && quote.dstAmount) {
             const formattedQuote = {
                 ...quote,
-                toAmount: formatUnits(BigInt(quote.toAmount), toToken.decimals),
+                dstAmount: formatUnits(BigInt(quote.dstAmount), toToken.decimals),
             }
             return { data: formattedQuote, raw, error: null };
         }

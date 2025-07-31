@@ -167,11 +167,19 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
 
   const handleFromTokenChange = (symbol: string | undefined) => {
     if (!symbol) return;
+    if (symbol === toTokenSymbol) {
+      const tempTo = toTokenSymbol;
+      setToTokenSymbol(fromTokenSymbol);
+    }
     setFromTokenSymbol(symbol);
   };
 
   const handleToTokenChange = (symbol: string | undefined) => {
     if (!symbol) return;
+    if (symbol === fromTokenSymbol) {
+        const tempFrom = fromTokenSymbol;
+        setFromTokenSymbol(toTokenSymbol);
+    }
     setToTokenSymbol(symbol);
   }
 
@@ -201,7 +209,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
     setIsSwapSuccessDialogOpen(true);
   };
 
-  const toAmountDisplay = isFetchingQuote ? "..." : (quote?.toAmount ? parseFloat(quote.toAmount).toFixed(5) : "0.0");
+  const toAmountDisplay = isFetchingQuote ? "..." : (quote?.dstAmount ? parseFloat(quote.dstAmount).toFixed(5) : "0.0");
   const isFetching = isFetchingQuote;
 
   return (
@@ -330,7 +338,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
                     </div>
                     <div className="flex justify-between items-center bg-secondary/50 p-3 rounded-md">
                         <span className="text-muted-foreground">To (est.)</span>
-                        <span className="font-bold text-lg text-accent">{parseFloat(swapSuccessDetails.quote.toAmount).toFixed(5)} {swapSuccessDetails.toToken.symbol}</span>
+                        <span className="font-bold text-lg text-accent">{parseFloat(swapSuccessDetails.quote.dstAmount).toFixed(5)} {swapSuccessDetails.toToken.symbol}</span>
                     </div>
                     <div className="space-y-2 text-xs border-t pt-4">
                         <div className="flex justify-between">
