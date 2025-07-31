@@ -118,7 +118,8 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
         if (usdtToken) {
           setToTokenSymbol('USDT');
         } else if (tokens.length > 1) {
-          setToTokenSymbol(tokens[1].symbol)
+          const toToken = tokens.find(t => t.symbol !== 'ETH');
+          setToTokenSymbol(toToken?.symbol)
         }
     }
 }, [tokens, portfolioTokens]);
@@ -360,5 +361,3 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
 const Label = (props: React.ComponentProps<"label">) => (
   <label {...props} className="text-sm font-medium text-muted-foreground" />
 );
-
-    
