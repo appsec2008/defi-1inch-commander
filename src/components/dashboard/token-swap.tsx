@@ -129,6 +129,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
   const fetchQuote = useCallback(async () => {
     if (!fromTokenData || !toTokenData || !debouncedFromAmount || isNaN(parseFloat(debouncedFromAmount)) || disabled || parseFloat(debouncedFromAmount) <= 0) {
       setQuote(null);
+      setQuoteError(null);
       return;
     }
 
@@ -191,7 +192,8 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
   };
 
   const handleExecuteSwap = async () => {
-    if (!fromTokenData || !toTokenData || !fromAmount || !address || !quote) return;
+    // The button's disabled state ensures all these values are present.
+    if (!fromTokenData || !toTokenData || !quote) return;
     
     setIsSwapping(true);
     // Simulate API call
