@@ -129,7 +129,6 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
   const fetchQuote = useCallback(async () => {
     if (!fromTokenData || !toTokenData || !debouncedFromAmount || isNaN(parseFloat(debouncedFromAmount)) || disabled || parseFloat(debouncedFromAmount) <= 0) {
       setQuote(null);
-      // onQuoteResponse({}); // This was clearing the quote prematurely
       return;
     }
 
