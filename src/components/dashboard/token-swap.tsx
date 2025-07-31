@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import type { Token, Asset, FusionQuote, FusionPreset } from "@/lib/types";
+import type { Token, Asset, SwapQuote } from "@/lib/types";
 import {
   Card,
   CardContent,
@@ -29,15 +29,12 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-    AlertDialogCancel,
   } from "@/components/ui/alert-dialog"
-import { ArrowDown, ChevronsRight, Loader2, Repeat, Terminal, Zap, Clock, Shield, Forward } from "lucide-react";
+import { ArrowDown, Loader2, Repeat, Terminal } from "lucide-react";
 import Image from "next/image";
 import { getQuoteAction } from "@/app/actions";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAccount } from "wagmi";
-import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 
 interface TokenSwapProps {
@@ -49,9 +46,7 @@ interface TokenSwapProps {
 }
 
 type SwapSuccessDetails = {
-    quote: FusionQuote;
-    preset: FusionPreset;
-    presetName: string;
+    quote: SwapQuote;
     fromToken: Token;
     toToken: Token;
     fromAmount: string;
@@ -64,8 +59,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
   const [toTokenSymbol, setToTokenSymbol] = useState<string | undefined>();
   const [fromAmount, setFromAmount] = useState<string>("1.0");
   
-  const [quote, setQuote] = useState<FusionQuote | null>(null);
-  const [selectedPreset, setSelectedPreset] = useState<'fast' | 'medium' | 'slow'>('fast');
+  const [quote, setQuote] = useState<SwapQuote | null>(null);
 
   const [isFetchingQuote, setIsFetchingQuote] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
@@ -131,7 +125,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
 
 
   const fetchQuote = useCallback(async () => {
-    if (!fromTokenData || !toTokenData || !debouncedFromAmount || isNaN(parseFloat(debouncedFromAmount)) || disabled || !address || parseFloat(debouncedFromAmount) <= 0) {
+    if (!fromTokenData || !toTokenData || !debouncedFromAmount || isNaN(parseFloat(debouncedFromAmount)) || disabled || parseFloat(debouncedFromAmount) <= 0) {
       setQuote(null);
       onQuoteResponse({});
       return;
@@ -145,7 +139,6 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
             { address: fromTokenData.address, decimals: fromTokenData.decimals }, 
             { address: toTokenData.address, decimals: toTokenData.decimals }, 
             debouncedFromAmount,
-            address
         );
         
         onQuoteResponse(quoteResult.raw || { error: quoteResult.error });
@@ -165,7 +158,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
     } finally {
       setIsFetchingQuote(false);
     }
-  }, [fromTokenData, toTokenData, debouncedFromAmount, disabled, onQuoteResponse, address]);
+  }, [fromTokenData, toTokenData, debouncedFromAmount, disabled, onQuoteResponse]);
 
 
   useEffect(() => {
@@ -191,9 +184,6 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
   const handleExecuteSwap = async () => {
     if (!fromTokenData || !toTokenData || !fromAmount || !address || !quote) return;
     
-    const presetData = quote.presets[selectedPreset];
-    if (!presetData) return;
-
     setIsSwapping(true);
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
@@ -203,8 +193,6 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
     const simulatedTxHash = `0x${[...Array(64)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`;
     setSwapSuccessDetails({
         quote: quote,
-        preset: presetData,
-        presetName: selectedPreset,
         fromToken: fromTokenData,
         toToken: toTokenData,
         fromAmount,
@@ -213,23 +201,16 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
     setIsSwapSuccessDialogOpen(true);
   };
 
-  const toAmountDisplay = isFetchingQuote ? "..." : (quote?.presets?.[selectedPreset]?.auctionEndAmount ? parseFloat(quote.presets[selectedPreset].auctionEndAmount).toFixed(5) : "0.0");
+  const toAmountDisplay = isFetchingQuote ? "..." : (quote?.toAmount ? parseFloat(quote.toAmount).toFixed(5) : "0.0");
   const isFetching = isFetchingQuote;
-
-  const presetOptions = [
-    { id: 'fast', label: 'Fast', icon: Zap, color: 'text-green-500' },
-    { id: 'medium', label: 'Medium', icon: Clock, color: 'text-yellow-500' },
-    { id: 'slow', label: 'Slow', icon: Shield, color: 'text-blue-500' }
-  ] as const;
-
 
   return (
     <>
     <Card className="flex flex-col">
       <CardHeader>
-        <CardTitle className="font-headline">Token Swap (Fusion)</CardTitle>
+        <CardTitle className="font-headline">Token Swap</CardTitle>
         <CardDescription>
-          Select a preset to get the best rates via 1inch Fusion.
+          Get the best rates via 1inch.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6 flex-grow">
@@ -316,39 +297,6 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
           </div>
         </div>
         
-        <div className="space-y-3 pt-2">
-            <h4 className="text-sm font-medium">Select Speed</h4>
-            <div className="grid grid-cols-3 gap-2">
-                {presetOptions.map(option => {
-                    const presetData = quote?.presets?.[option.id];
-                    const isActive = selectedPreset === option.id;
-                    const isDisabled = !presetData || disabled;
-                    return (
-                        <button
-                            key={option.id}
-                            onClick={() => setSelectedPreset(option.id)}
-                            disabled={isDisabled}
-                            className={cn(
-                                "p-3 rounded-lg border-2 text-left space-y-1 transition-all",
-                                isActive ? "border-primary bg-primary/10" : "border-border hover:border-primary/50",
-                                isDisabled ? "opacity-50 cursor-not-allowed bg-muted/50" : ""
-                            )}
-                        >
-                            <div className="flex items-center gap-2">
-                                <option.icon className={cn("w-5 h-5", isActive ? option.color : "text-muted-foreground")} />
-                                <h5 className="font-semibold">{option.label}</h5>
-                            </div>
-                            <p className={cn("text-xs font-mono", isActive ? "text-primary" : "text-muted-foreground")}>
-                                {isFetchingQuote ? <Loader2 className="w-4 h-4 animate-spin"/> : presetData ? `~${(parseFloat(presetData.auctionEndAmount) / parseFloat(fromAmount || "1")).toFixed(4)}` : "N/A"}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                                {isFetchingQuote ? '...' : presetData ? `${presetData.auctionDuration}s` : ''}
-                            </p>
-                        </button>
-                    )
-                })}
-            </div>
-        </div>
         {(quoteError) && <Alert variant="destructive"><AlertDescription>{quoteError}</AlertDescription></Alert>}
       </CardContent>
       <CardFooter className="mt-auto">
@@ -356,7 +304,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
           size="lg"
           className="w-full font-bold"
           onClick={handleExecuteSwap}
-          disabled={isSwapping || isFetching || !quote || !fromAmount || disabled || !quote?.presets?.[selectedPreset]}
+          disabled={isSwapping || isFetching || !quote || !fromAmount || disabled}
         >
           {isSwapping ? <><Loader2 className="animate-spin mr-2" />Swapping...</> : isFetching ? <><Loader2 className="mr-2 animate-spin" />Fetching Quote...</> : "Swap (Simulated)"}
         </Button>
@@ -369,7 +317,7 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
                 <AlertDialogHeader>
                 <AlertDialogTitle>Swap Successful (Simulated)</AlertDialogTitle>
                 <AlertDialogDescription>
-                    Your simulated 1inch Fusion swap was executed. Here are the details for the '{swapSuccessDetails.presetName}' preset.
+                    Your simulated swap was executed. Here are the details.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
                 <div className="text-sm space-y-4">
@@ -382,20 +330,12 @@ export function TokenSwap({ tokens = [], portfolio = [], disabled, onQuoteRespon
                     </div>
                     <div className="flex justify-between items-center bg-secondary/50 p-3 rounded-md">
                         <span className="text-muted-foreground">To (est.)</span>
-                        <span className="font-bold text-lg text-accent">{parseFloat(swapSuccessDetails.preset.auctionEndAmount).toFixed(5)} {swapSuccessDetails.toToken.symbol}</span>
+                        <span className="font-bold text-lg text-accent">{parseFloat(swapSuccessDetails.quote.toAmount).toFixed(5)} {swapSuccessDetails.toToken.symbol}</span>
                     </div>
                     <div className="space-y-2 text-xs border-t pt-4">
                         <div className="flex justify-between">
-                            <span className="text-muted-foreground">Quote ID:</span>
-                            <span className="font-mono truncate max-w-[180px]">{swapSuccessDetails.quote.quoteId}</span>
-                        </div>
-                        <div className="flex justify-between">
                             <span className="text-muted-foreground">Transaction Hash:</span>
                             <span className="font-mono truncate max-w-[180px]">{swapSuccessDetails.txHash}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Auction Duration:</span>
-                            <span className="font-mono">{swapSuccessDetails.preset.auctionDuration}s</span>
                         </div>
                     </div>
                 </div>

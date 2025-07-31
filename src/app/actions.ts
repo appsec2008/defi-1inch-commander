@@ -18,7 +18,7 @@ This is the most important data for your specific recommendations. This JSON arr
 \`\`\`
 
 **2. Full Portfolio (from 1inch Balance API):**
-This JSON object provides the complete list of all token balances for the user's wallet. Use this to understand the full scope and diversity of the portfolio, including long-tail assets.
+This is the full list of token balances for the user's wallet. Use this to understand the full scope and diversity of the portfolio, including long-tail assets.
 \`\`\`json
 {{{json fullPortfolio}}}
 \`\`\`
@@ -150,36 +150,22 @@ export async function getTokensAction() {
 }
 
 
-export async function getQuoteAction(fromToken: { address: string, decimals: number }, toToken: { address: string, decimals: number }, fromAmount: string, fromAddress: string) {
+export async function getQuoteAction(fromToken: { address: string, decimals: number }, toToken: { address: string, decimals: number }, fromAmount: string) {
     if (!fromAmount || isNaN(parseFloat(fromAmount)) || parseFloat(fromAmount) <= 0) {
         return { data: null, error: "Invalid amount", raw: {} };
     }
     try {
         const amountInSmallestUnit = parseUnits(fromAmount, fromToken.decimals);
-        const { quote, raw, error } = await getQuote(fromToken.address, toToken.address, amountInSmallestUnit.toString(), fromAddress);
+        const { quote, raw, error } = await getQuote(fromToken.address, toToken.address, amountInSmallestUnit.toString());
 
         if (error) {
             return { data: null, error, raw };
         }
         
-        if (quote && quote.toTokenAmount) {
-            const formatPreset = (preset: any) => {
-                if (!preset) return preset;
-                return {
-                    ...preset,
-                    auctionEndAmount: preset.auctionEndAmount ? formatUnits(BigInt(preset.auctionEndAmount), toToken.decimals) : '0',
-                    auctionStartAmount: preset.auctionStartAmount ? formatUnits(BigInt(preset.auctionStartAmount), toToken.decimals) : '0',
-                    startAmount: preset.startAmount ? formatUnits(BigInt(preset.startAmount), toToken.decimals) : '0',
-                }
-            }
+        if (quote && quote.toAmount) {
             const formattedQuote = {
                 ...quote,
-                toTokenAmount: formatUnits(BigInt(quote.toTokenAmount), toToken.decimals),
-                presets: {
-                    fast: formatPreset(quote.presets.fast),
-                    medium: formatPreset(quote.presets.medium),
-                    slow: formatPreset(quote.presets.slow),
-                }
+                toAmount: formatUnits(BigInt(quote.toAmount), toToken.decimals),
             }
             return { data: formattedQuote, raw, error: null };
         }

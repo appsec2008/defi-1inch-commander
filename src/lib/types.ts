@@ -37,6 +37,13 @@ export type Swap = Quote & {
 }
 
 
+// Classic Swap Quote
+export type SwapQuote = {
+    toAmount: string;
+    gas: number;
+}
+
+
 // 1inch Fusion Types
 export type FusionPreset = {
     auctionDuration: number;

@@ -1,91 +1,95 @@
 
 'use server';
 
-import type { Quote, Token, Swap, Asset, FusionQuote } from "@/lib/types";
+import type { Token, Swap, Asset, SwapQuote } from "@/lib/types";
 
 const API_BASE = "https://api.1inch.dev";
 const CHAIN_ID = "1"; // Ethereum Mainnet
 
 type ApiResult = {
-    request: { method: string, url: string, body?: any };
+    request: { method: string, url: string, params?: any, body?: any };
     response: any;
     error?: string;
 }
 
-async function fetch1inch(path: string, options: RequestInit = {}): Promise<ApiResult> {
-  const apiKey = process.env.NEXT_PUBLIC_ONE_INCH_API_KEY;
-  const url = `${API_BASE}${path}`;
-  const method = options.method || 'GET';
+async function fetch1inch(path: string, options: RequestInit = {}, params: Record<string, string> = {}): Promise<ApiResult> {
+    const apiKey = process.env.NEXT_PUBLIC_ONE_INCH_API_KEY;
+    const url = new URL(`${API_BASE}${path}`);
+    if (Object.keys(params).length > 0) {
+        url.search = new URLSearchParams(params).toString();
+    }
+    
+    const method = options.method || 'GET';
 
-  const requestDetails: ApiResult['request'] = { method, url };
-  if (options.body && typeof options.body === 'string') {
+    const requestDetails: ApiResult['request'] = { method, url: url.toString() };
+    if (params) {
+        requestDetails.params = params;
+    }
+    if (options.body && typeof options.body === 'string') {
+        try {
+            requestDetails.body = JSON.parse(options.body);
+        } catch (e) {
+            requestDetails.body = options.body;
+        }
+    }
+
+    if (!apiKey || apiKey === 'YOUR_1INCH_API_KEY_HERE') {
+        const errorMsg = "1inch API key is not set. Please add it to your .env file.";
+        console.error(errorMsg);
+        return { request: requestDetails, response: { error: "API key not configured." }, error: errorMsg };
+    }
+
     try {
-        requestDetails.body = JSON.parse(options.body);
-    } catch (e) {
-        requestDetails.body = options.body;
+        const response = await fetch(url.toString(), {
+            ...options,
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "accept": "application/json",
+                ...options.headers,
+            },
+            cache: 'no-store'
+        });
+
+        const responseBody = await response.json().catch(() => ({ description: response.statusText, error: response.statusText }));
+
+        if (!response.ok) {
+            console.error(`1inch API error: ${responseBody.description || responseBody.error}`, { status: response.status, body: responseBody });
+            return { request: requestDetails, response: responseBody, error: responseBody.description || responseBody.error };
+        }
+
+        return { request: requestDetails, response: responseBody };
+    } catch (error: any) {
+        console.error("Failed to fetch from 1inch API:", error);
+        return { request: requestDetails, response: { error: error.message }, error: error.message || "Failed to fetch" };
     }
-  }
-
-  if (!apiKey || apiKey === 'YOUR_1INCH_API_KEY_HERE') {
-    const errorMsg = "1inch API key is not set. Please add it to your .env file.";
-    console.error(errorMsg);
-    return { request: requestDetails, response: { error: "API key not configured." }, error: errorMsg };
-  }
-
-  try {
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "accept": "application/json",
-        ...options.headers,
-      },
-      cache: 'no-store'
-    });
-
-    const responseBody = await response.json().catch(() => ({ description: response.statusText, error: response.statusText }));
-
-    if (!response.ok) {
-      console.error(`1inch API error: ${responseBody.description || responseBody.error}`, { status: response.status, body: responseBody });
-      return { request: requestDetails, response: responseBody, error: responseBody.description || responseBody.error };
-    }
-
-    return { request: requestDetails, response: responseBody };
-  } catch (error: any) {
-    console.error("Failed to fetch from 1inch API:", error);
-    return { request: requestDetails, response: { error: error.message }, error: error.message || "Failed to fetch" };
-  }
 }
 
 export async function getTokens(): Promise<{ tokens: Token[], raw: ApiResult, error?: string }> {
     const result = await fetch1inch(`/swap/v6.0/${CHAIN_ID}/tokens`);
-  
+
     if (!result.response || result.error) {
-      return { tokens: [], raw: result, error: result.error };
+        return { tokens: [], raw: result, error: result.error };
     }
-  
+
     const tokenList: Token[] = Object.values(result.response.tokens || {}).map((token: any) => ({
-      symbol: token.symbol,
-      name: token.name,
-      address: token.address,
-      decimals: token.decimals,
-      icon: token.logoURI
+        symbol: token.symbol,
+        name: token.name,
+        address: token.address,
+        decimals: token.decimals,
+        icon: token.logoURI
     }));
 
     return { tokens: tokenList, raw: result };
 }
 
-export async function getQuote(fromTokenAddress: string, toTokenAddress: string, amount: string, walletAddress: string): Promise<{ quote: FusionQuote | null, raw: ApiResult, error?: string }> {
-    const params = new URLSearchParams({
-        fromTokenAddress: fromTokenAddress,
-        toTokenAddress: toTokenAddress,
+export async function getQuote(fromTokenAddress: string, toTokenAddress: string, amount: string): Promise<{ quote: SwapQuote | null, raw: ApiResult, error?: string }> {
+    const params = {
+        src: fromTokenAddress,
+        dst: toTokenAddress,
         amount: amount,
-        walletAddress: walletAddress,
-        enableEstimate: 'true',
-    });
-
-    const path = `/fusion/quoter/v2.0/${CHAIN_ID}/quote/receive?${params.toString()}`;
-    const result = await fetch1inch(path);
+    };
+    const path = `/swap/v6.1/${CHAIN_ID}/quote`;
+    const result = await fetch1inch(path, {}, params);
     
     if (!result.response || result.error) {
         return { quote: null, raw: result, error: result.error || result.response?.description };
@@ -95,8 +99,15 @@ export async function getQuote(fromTokenAddress: string, toTokenAddress: string,
 }
 
 export async function getSwap(fromTokenAddress: string, toTokenAddress: string, amount: string, fromAddress: string, fromTokenSymbol?: string): Promise<{ swap: Swap | null, raw: ApiResult, error?: string }> {
-    const path = `/swap/v6.0/${CHAIN_ID}/swap?src=${fromTokenAddress}&dst=${toTokenAddress}&amount=${amount}&from=${fromAddress}&slippage=1`;
-    const result = await fetch1inch(path);
+    const params = {
+        src: fromTokenAddress,
+        dst: toTokenAddress,
+        amount: amount,
+        from: fromAddress,
+        slippage: '1'
+    };
+    const path = `/swap/v6.0/${CHAIN_ID}/swap`;
+    const result = await fetch1inch(path, {}, params);
 
     if (result.response?.description?.includes('insufficient funds')) {
         const errorMsg = `Not enough ${fromTokenSymbol || fromTokenAddress} balance.`;
@@ -117,16 +128,16 @@ export async function getSpotPrices(tokenAddresses: string[]): Promise<{ prices:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tokens: tokenAddresses, currency: 'USD' })
     });
-  
+
     if (!result.response || result.error) {
-      return { prices: {}, raw: result, error: result.error || 'Failed to fetch spot prices.' };
+        return { prices: {}, raw: result, error: result.error || 'Failed to fetch spot prices.' };
     }
-  
+
     const prices: {[key: string]: number} = {};
     for (const address in result.response) {
         prices[address.toLowerCase()] = parseFloat(result.response[address]);
     }
-  
+
     return { prices, raw: result };
 }
 
