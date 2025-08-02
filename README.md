@@ -26,10 +26,6 @@ We built DeFi 1inch Commander to solve these problems by:
 
 Our goal is to create a powerful yet user-friendly command center for anyone interacting with the world of decentralized finance.
 
-## Development Log
-
-For a summary of recent development activities, please see the [Daily Summary](./daily-summary.md).
-
 ## Technical Architecture
 
 The DApp is built on a modern, robust, and scalable tech stack, designed for a great developer and user experience.
